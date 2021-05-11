@@ -1,20 +1,23 @@
+#' @import purrr
+#' @import furrr
+#' @import dplyr
+#' @import tibble
+
 ##### FUNCTION TO FIND SHARED GENES #####
-# gene2tr: data frame containing transcript_id and gene_id columns, indicating gene-isoform correspondence.
+# gene2tr: data frame containing transcript_id and gene_id columns,
+#indicating gene-isoform correspondence.
 
 #' @export
 find_shared_genes <- function(cluster_list, gene2tr){
 
-  require(tidyverse)
-  require(furrr)
-
   # convert clusters to gene IDs
   cluster_list.gene <- map(cluster_list, ~gene2tr[match(., gene2tr$transcript_id),]$gene_id)
 
-  # find intersections with modified UpSetR::fromList() function
+  # find intersections with modified UpSetR fromList() function
   gene_occurrence <- fromList(cluster_list.gene)
 
   # iterate all combinations of genes and find coincidences across clusters
-  gcomb <- combn(rownames(gene_occurrence), 2)
+  gcomb <- utils::combn(rownames(gene_occurrence), 2)
   colnames(gcomb) <- paste0("pair", seq(1, ncol(gcomb)))
 
   message("Finding co-spliced gene pairs across clusters...")
@@ -27,9 +30,8 @@ find_shared_genes <- function(cluster_list, gene2tr){
 }
 
 ##### FUNCTION TO CHECK CO-OCCURRENCE OF A GENE PAIR ACROSS CLUSTERS ####
-# function called iteratively by find_shared_genes() to check each gene pair for co-occurrence
-
-#' @export
+# function called internally by find_shared_genes() to iteratively
+# check each gene pair for co-occurrence
 check_gene_pair <- function(pair, intersections){
 
   check <- sum(colSums(intersections[pair, ]) == 2) >= 2
@@ -41,9 +43,6 @@ check_gene_pair <- function(pair, intersections){
 
 #' @export
 test_shared_genes <- function(data, cluster_list, shared_genes, gene2tr, cell_types){
-
-  require(tidyverse)
-  require(furrr)
 
   pair_seq <- seq(1, ncol(shared_genes))
 
@@ -63,23 +62,20 @@ test_shared_genes <- function(data, cluster_list, shared_genes, gene2tr, cell_ty
 }
 
 ##### FUNCTION TO TEST INTERACTIONS FOR A GENE PAIR ####
-
-#' @export
+# called internally by test_shared_genes to test cluster-dependent
+# expression for a pair of shared genes
 make_test <- function(pair, data, cluster_list, gene2tr, cell_types){
-
-  require(car)
-  require(MASS)
 
   # make long matrix with factors and expression
   design <- make_design(data, cluster_list, gene2tr, cell_types, pair)
 
   # fit glm for all double interactions
-  fit <- glm(expression ~ (gene + cluster + cell_type)^2,
-             data = design, family = negative.binomial(theta = 10), maxit = 200)
+  fit <- stats::glm(expression ~ (gene + cluster + cell_type)^2,
+             data = design, family = MASS::negative.binomial(theta = 10), maxit = 200)
 
 
   # perform test
-  adev <- Anova(fit, type = 2, contrasts=list(topic=contr.sum, sys=contr.sum))
+  adev <- car::Anova(fit, type = 2, contrasts=list(topic=stats::contr.sum, sys=stats::contr.sum))
   # contrasts = list(topic = contr.sum, sys = contr.sum)
   # select p-values
   pvalues <- tibble(adev["cluster:cell_type", "Pr(>Chisq)"], adev["gene:cell_type", "Pr(>Chisq)"])
@@ -92,16 +88,12 @@ make_test <- function(pair, data, cluster_list, gene2tr, cell_types){
 ##### FUNCTION TO CREATE DESIGN MATRIX FOR A GENE PAIR ####
 # called internally by test_shared_genes to create design matrix for glm for a given pair of shared genes
 # pair is a character vector with gene names for the selected pair
-
-#' @export
 make_design <- function(data, cluster_list, gene2tr, cell_types, pair){
-
-  require(tidyverse)
 
   # remake gene_occurrence list
   # convert clusters to gene IDs
   cluster_list.gene <- map(cluster_list, ~gene2tr[match(., gene2tr$transcript_id),]$gene_id)
-  # find intersections with modified UpSetR::fromList() function
+  # find intersections with modified UpSetR fromList() function
   gene_occurrence <- fromList(cluster_list.gene)
 
   # find clusters where pair has isoforms
@@ -123,7 +115,7 @@ make_design <- function(data, cluster_list, gene2tr, cell_types, pair){
       cluster_factor <- factor(rep(seq(nrow(fouriso_expr)/2), each = 2))
       fouriso_expr <- mutate(fouriso_expr, cluster = cluster_factor)
       # long formatting
-      fouriso_expr_long <- gather(fouriso_expr, cell_id, expression, -transcript_id, -gene, -cluster)
+      fouriso_expr_long <- tidyr::gather(fouriso_expr, cell_id, expression, -transcript_id, -gene, -cluster)
       fouriso_expr_long <- mutate(fouriso_expr_long, cell_type = rep(cell_types, each = nrow(fouriso_expr))) %>%
         mutate_at("expression", as.integer)
 
@@ -133,16 +125,12 @@ make_design <- function(data, cluster_list, gene2tr, cell_types, pair){
 ##### FUNCTION TO CREATE EXPRESSION MATRIX FOR A GENE PAIR ####
 # called internally by test_shared_genes to create one-line expression matrix
 # to test ct-cluster and ct-gene interactions via a glm approach
-
-#' @export
 make_matrix <- function(data, design){
-
-  require(tidyverse)
 
   # create wide dataession matrix with sample IDs combining cell and transcript
   data <- data %>% filter(transcript_id %in% unique(design$transcript_id))
-  data_long <- data %>% gather(cell_id, expression, -transcript_id)
-  data_wide <- data_long %>% pivot_wider(names_from = c(transcript_id, cell_id), values_from = expression)
+  data_long <- data %>% tidyr::gather(cell_id, expression, -transcript_id)
+  data_wide <- data_long %>% tidyr::pivot_wider(names_from = c(transcript_id, cell_id), values_from = expression)
 
   # create sample names combining transcript and cell IDs
   design <- design %>% mutate(sample = paste(transcript_id, cell_id, sep = "_")) %>%

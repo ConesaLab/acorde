@@ -1,4 +1,6 @@
-
+#' @import dplyr
+#' @import purrr
+#' @import tibble
 
 ##### FUNCTION TO FILTER BY DIFFERENTIAL EXPRESSION OF ISOFORMS #####
 # data: SCE object containing counts and cell type labels in a cell_type column
@@ -6,41 +8,53 @@
 cell_type_DE <- function(data, pvalue_filter = 0.05, mode = c("edgeR", "DESeq2", "both"),
                          compute_weights = TRUE, offset = NULL){
 
-  require(tidyverse)
-
   mode <- match.arg(mode)
+
+  # check install
+  if(!requireNamespace("zinbwave", quietly = TRUE)){
+    stop("package 'zinbwave' is required but not installed.")
+  }
+  if(!requireNamespace("DESeq2", quietly = TRUE)){
+    stop("package 'DESeq2' is required but not installed.")
+  }
+  if(!requireNamespace("edgeR", quietly = TRUE)){
+    stop("package 'edgeR' is required but not installed.")
+  }
+  if(!requireNamespace("SingleCellExperiment", quietly = TRUE)){
+    stop("package 'SingleCellExperiment' is required but not installed.")
+  }
 
   # calculate cell-level weights for each transcript
   if(compute_weights == TRUE){
 
-    require(zinbwave)
     message("Computing cell-level weights using ZINBWaVe...")
 
-    data <- zinbwave(data, observationalWeights = TRUE)
+    data <- zinbwave::zinbwave(data, observationalWeights = TRUE)
 
   } else {
-    message("Warning: compute_weights = FALSE. Weights will be required to be pre-computed and stored in the SCE object.")
+    message("Warning: compute_weights = FALSE.
+            Weights will be required to be pre-computed and stored in the
+            SCE object.")
   }
 
   # DE WITH EDGER (if indicated by user)
   if(mode == "edgeR" || mode == "both"){
 
-    require(edgeR)
     message("Running DE across cell types with edgeR...")
 
     # create DGEList object for edgeR and add missing elements for DE
-    dge <- DGEList(assay(data))
+    dge <- edgeR::DGEList(SummarizedExperiment::assay(data))
     if(is.null(offset) == FALSE){
       dge$offset <- offset
     }
-    dge <- calcNormFactors(dge)
-    design <- model.matrix(~cell_type, data = colData(data))
-    dge$weights <- assay(data, "weights")
+    dge <- edgeR::calcNormFactors(dge)
+    design <- stats::model.matrix(~cell_type, data = SummarizedExperiment::colData(data))
+    dge$weights <- SummarizedExperiment::assay(data, "weights")
 
     # glm fit and test
-    dge <- estimateDisp(dge, design)
-    fit <- glmFit(dge, design)
-    lrt <- glmWeightedF(fit, coef = 2:length(unique(data$cell_type)))
+    dge <- edgeR::estimateDisp(dge, design)
+    fit <- edgeR::glmFit(dge, design)
+    lrt <- zinbwave::glmWeightedF(fit, coef = 2:length(unique(data$cell_type)))
 
     # extract and filter results by p-value threshold
     edger_results <- lrt$table %>% rownames_to_column("transcript")
@@ -51,24 +65,24 @@ cell_type_DE <- function(data, pvalue_filter = 0.05, mode = c("edgeR", "DESeq2",
   # DE WITH DESEQ2 (if indicated by user)
   if(mode == "DESeq2" || mode == "both"){
 
-    require(DESeq2)
     message("Running DE across cell types with DESeq2...")
 
     # create DESeqDataSet object for DESeq2
-    dds <- DESeqDataSet(data, design = ~cell_type)
+    dds <- DESeq2::DESeqDataSet(data, design = ~cell_type)
 
     if(is.null(offset) == FALSE){
       normFactors <- exp(-1 * offset)
       normFactors <- normFactors / exp(rowMeans(log(normFactors)))
-      normalizationFactors(dds) <- normFactors
+      DESeq2::normalizationFactors(dds) <- normFactors
     }
 
     # run DESeq() using indications from zinbwave package
-    dds <- DESeq(dds, sfType = "poscounts", minReplicatesForReplace = Inf, parallel = TRUE)
+    dds <- DESeq2::DESeq(dds, sfType = "poscounts", minReplicatesForReplace = Inf, parallel = TRUE)
 
     # extract and filter results
     deseq_results <- results(dds, independentFiltering = FALSE) %>% as.data.frame
-    deseq_sig.tr <- deseq_results %>% rownames_to_column("transcript") %>% as_tibble %>% filter(padj < pvalue_filter)
+    deseq_sig.tr <- deseq_results %>% rownames_to_column("transcript") %>% as_tibble %>%
+      filter(padj < pvalue_filter)
   }
 
 
@@ -113,7 +127,13 @@ run_downsampling <- function(data, cell_types, cell_no = 45){
 
   message("Downsampling data...")
 
-  require(zinbwave)
+  # check install
+  if(!requireNamespace("zinbwave", quietly = TRUE)){
+    stop("package 'zinbwave' is required but not installed.")
+  }
+  if(!requireNamespace("SingleCellExperiment", quietly = TRUE)){
+    stop("package 'SingleCellExperiment' is required but not installed.")
+  }
 
   # randomly sample 50 cells from each neural type
   gaba_ids <- filter(cell_types, cell_type == "GABA-ergic Neuron") %>%
@@ -136,13 +156,13 @@ run_downsampling <- function(data, cell_types, cell_no = 45){
   message(paste0("Total genes to be tested for DE: ", nrow(data_down)))
 
   # create SCE object
-  sce <- SingleCellExperiment(assays = list(counts = column_to_rownames(data_down, "transcript_id") %>%
-                                              as.matrix %>% round),
-                              colData = cell_types)
+  sce <- SingleCellExperiment::SingleCellExperiment(
+    assays = list(counts = column_to_rownames(data_down, "transcript_id") %>% as.matrix %>% round),
+    colData = cell_types)
 
   # calculate weights
   message("Calculating ZINBWaVE weights...")
-  sce <- zinbwave(sce, observationalWeights = TRUE, BPPARAM = MulticoreParam(6))
+  sce <- zinbwave::zinbwave(sce, observationalWeights = TRUE, BPPARAM = BiocParallel::MulticoreParam(6))
 
   return(sce)
 }

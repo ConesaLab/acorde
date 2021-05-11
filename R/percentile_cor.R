@@ -1,12 +1,17 @@
+#' @import dplyr
+#' @import purrr
+#' @import tibble
+#' @import stringr
+
 ##### FUNCTIONS TO COMPUTE PERCENTILE CORRELATIONS BETWEEN ISOFORMS #####
-# data: a matrix or data frame with transcript IDs in rownames (or, in the case of a data frame, in the first column
+# data: a matrix or data frame with transcript IDs in rownames
+# (or, in the case of a data frame, in the first column
 # i.e. see rownames_to_column() function from the tibble package)
-# ids_to_type: a data frame with cell ids in the first column and cell type labels in the second column
+# ids_to_type: a data frame with cell ids in the first column and cell type labels
+# in the second column
 
 #' @export
 percentile_expr <- function(data, ids_to_type, percentile_no){
-
-  require(tidyverse)
 
   # handle rownames and data type
   if(str_detect(colnames(data), "transcript") %>% sum == 0 || is.matrix(data) == TRUE){
@@ -24,7 +29,7 @@ percentile_expr <- function(data, ids_to_type, percentile_no){
   # generate step for probabilities in quantile function
   step <- 1/percentile_no
   # calculate percentiles by cell type for each transcript
-  percentile_list <- purrr::map(cells_split, ~(dplyr::select(data, all_of(.)) %>%
+  percentile_list <- map(cells_split, ~(select(data, all_of(.)) %>%
                                           apply(1, quantile, seq(0, 1, step)) %>% as.data.frame))
   percentiles <- bind_rows(percentile_list)
   colnames(percentiles) <- data[[1]]
@@ -40,7 +45,7 @@ percentile_cor <- function(data, ids_to_type, percentile_no = 10){
   percentiles <- percentile_expr(data, ids_to_type, percentile_no)
 
   # calculate correlations
-  cors <- cor(percentiles)
+  cors <- stats::cor(percentiles)
 
   return(cors)
 }

@@ -1,3 +1,8 @@
+#' @import dplyr
+#' @import purrr
+#' @import tibble
+#' @import ggplot2
+
 ##### FUNCTION TO CLUSTER ISOFORMS BASED ON CORRELATION #####
 # cor_matrix: matrix of correlation values with column names and rownames indicating the transcript IDs
 # ...: can be used to change parameters of cutreeHybrid() function. Three set by default can also be changed.
@@ -5,16 +10,14 @@
 #' @export
 cluster_isoforms <- function(cor_matrix, deepSplit = 3, pamStage = FALSE, minClusterSize = 20,...){
 
-  require(dynamicTreeCut)
-
   # hierarchical clustering on correlation-based distance
   message("Inferring dendrogram via hclust()...")
-  dist <- as.dist(1 - abs(cor_matrix))
-  h <- hclust(dist, method = "average")
+  dist <- stats::as.dist(1 - abs(cor_matrix))
+  h <- stats::hclust(dist, method = "average")
 
   # create clusters dynamically from hclust dendrogram
   message("Creating clusters dynamically via cutreeHybrid()...")
-  hdynamic <- cutreeHybrid(h, as.matrix(dist),
+  hdynamic <- dynamicTreeCut::cutreeHybrid(h, as.matrix(dist),
                            deepSplit = deepSplit, pamStage = pamStage, minClusterSize = minClusterSize, ...)
   hclusters <- split(h$labels, hdynamic$labels)
 
@@ -22,16 +25,12 @@ cluster_isoforms <- function(cor_matrix, deepSplit = 3, pamStage = FALSE, minClu
 }
 
 #### FUNCTION TO FILTER ONE CLUSTER AND GET A CLEANER SIGNAL ####
-
-#' @export
 single_cluster_filter <- function(cluster, cor_matrix, min_cor, lowcor_threshold){
-
-  require(tidyverse)
 
   # select correlations for transcripts in cluster
   clust_cors <- cor_matrix[cluster, cluster] %>% as_tibble
   # count no. of low correlations
-  tr_filt <- purrr::map_lgl(clust_cors, ~(sum(. < min_cor) < lowcor_threshold))
+  tr_filt <- map_lgl(clust_cors, ~(sum(. < min_cor) < lowcor_threshold))
   # filter the cluster
   filtered_cluster <- cluster[tr_filt]
   return(filtered_cluster)
@@ -47,8 +46,6 @@ single_cluster_filter <- function(cluster, cor_matrix, min_cor, lowcor_threshold
 filter_clusterQC <- function(cluster_list, cor_matrix, min_cor = 0.8, lowcor_threshold = 3,
                             contains_unclustered = TRUE, length_filter = TRUE, length_threshold = 3){
 
-  require(tidyverse)
-
   # if unclustered transcripts are contained in cluster_list, handle
   if(contains_unclustered == TRUE){
     unclustered <- cluster_list[[1]]
@@ -56,27 +53,27 @@ filter_clusterQC <- function(cluster_list, cor_matrix, min_cor = 0.8, lowcor_thr
   }
 
   # single cluster filtering function multiple times across cluster_list
-  filtered_list <- purrr::map(cluster_list, single_cluster_filter,
+  filtered_list <- map(cluster_list, single_cluster_filter,
                        cor_matrix = cor_matrix, min_cor = min_cor, lowcor_threshold = lowcor_threshold)
 
   # move discarded transcripts to unclustered group
   if(contains_unclustered == TRUE){
     # join to current unclustered group
     unclustered <- c(unclustered,
-                     purrr::map2(filtered_list, cluster_list, ~(.y[!(.y %in% .x)])) %>% unlist)
+                     map2(filtered_list, cluster_list, ~(.y[!(.y %in% .x)])) %>% unlist)
 
   }else{
     # if unclustered not provided, simply generate new unclustered group
-    unclustered <- purrr::map2(filtered_list, cluster_list, ~(.y[!(.y %in% .x)]))
+    unclustered <- map2(filtered_list, cluster_list, ~(.y[!(.y %in% .x)]))
   }
 
   # filter out small clusters (by threshold) and move to unclustered
   if(length_filter == TRUE){
     unclustered <- c(unclustered,
-                     filtered_list[purrr::map_int(filtered_list, length) <= length_threshold] %>% unlist) %>% unlist
+                     filtered_list[map_int(filtered_list, length) <= length_threshold] %>% unlist) %>% unlist
     unclustered <- list("0" = unclustered)
 
-    filtered_list <- filtered_list[purrr::map_int(filtered_list, length) > length_threshold]
+    filtered_list <- filtered_list[map_int(filtered_list, length) > length_threshold]
     names(filtered_list) <- seq(1, length(filtered_list))
   }
 
@@ -93,9 +90,6 @@ expand_clusters <- function(data, cluster_list, unclustered, ids_to_type,
                             method = c("percentile", "pearson", "spearman", "rho", "zi_kendall"),
                             percentile_no = 10){
 
-  require(tidyverse)
-  require(dismay)
-
   message(paste("Expanding clusters using ", method, "correlation..."))
 
   if(method == "percentile"){
@@ -104,13 +98,14 @@ expand_clusters <- function(data, cluster_list, unclustered, ids_to_type,
     percentiles <- percentile_expr(data, ids_to_type, percentile_no = percentile_no)
 
     # metatranscripts of clusters: compute mean-summarized percentile expression per transcript
-    metatranscripts <- purrr::map(cluster_list,
-                           ~(percentiles[,.] %>% as_tibble %>% rowMeans %>% enframe(value = "mean_percentile")))
-    metatr.df <- purrr::map(metatranscripts, dplyr::select, mean_percentile) %>% bind_cols
+    metatranscripts <- map(cluster_list,
+                           ~(percentiles[,.] %>% as_tibble %>% rowMeans %>%
+                               enframe(value = "mean_percentile")))
+    metatr.df <- map(metatranscripts, select, mean_percentile) %>% bind_cols
 
     # calculate correlation between unclustered and metatranscripts
     unclust_percentiles <- percentiles[,unclustered]
-    unclust_cor <- cor(unclust_percentiles, metatr.df)
+    unclust_cor <- stats::cor(unclust_percentiles, metatr.df)
 
   }else if(method != "percentile"){
 
@@ -119,7 +114,7 @@ expand_clusters <- function(data, cluster_list, unclustered, ids_to_type,
     }
 
     # get metatranscripts (mean expression of clusters)
-    metatr.df <- purrr::map(cluster_list,
+    metatr.df <- map(cluster_list,
                       ~(filter(data, transcript_id %in% .) %>% column_to_rownames("transcript_id") %>%
                         colMeans %>% enframe(value = "cluster_mean", name = NULL))) %>% bind_cols
 
@@ -131,18 +126,18 @@ expand_clusters <- function(data, cluster_list, unclustered, ids_to_type,
       mat <- bind_cols(metatr.df, unclust_expr) %>% as.matrix()
 
       # use dismay function to compute rho
-      unclust_cor <- dismay(mat, metric = "rho_p", select = colnames(mat))
+      unclust_cor <- dismay::dismay(mat, metric = "rho_p", select = colnames(mat))
       unclust_cor <- unclust_cor[colnames(unclust_expr), colnames(metatr.df)]
 
     }else if(method == "zi_kendall"){
       mat <- bind_cols(metatr.df, unclust_expr) %>% as.matrix()
 
       # use dismay function to compute rho
-      unclust_cor <- dismay(mat, metric = "zi_kendall")
+      unclust_cor <- dismay::dismay(mat, metric = "zi_kendall")
       unclust_cor <- unclust_cor[colnames(unclust_expr), colnames(metatr.df)]
 
     }else{
-      unclust_cor <- cor(unclust_expr, metatr.df, method = method)
+      unclust_cor <- stats::cor(unclust_expr, metatr.df, method = method)
     }
   }
 
@@ -166,11 +161,11 @@ expand_clusters <- function(data, cluster_list, unclustered, ids_to_type,
 
   # assign unclustered
   if(length(skip) == 0){
-    cluster_list.expanded <- purrr::map2(cluster_list, assign_unclust,
+    cluster_list.expanded <- map2(cluster_list, assign_unclust,
                                   ~(c(.x, .y)))
     cluster_list.nonexpanded <- NULL
   } else {
-    cluster_list.expanded <- purrr::map2(cluster_list[-c(skip)], assign_unclust,
+    cluster_list.expanded <- map2(cluster_list[-c(skip)], assign_unclust,
                                   ~(c(.x, .y)))
     # recover skipped clusters, i.e. clusters that have not been expanded
     cluster_list.nonexpanded <- cluster_list[skip]
@@ -201,62 +196,59 @@ merge_clusters <- function(data, cluster_list, ids_to_type, height_cutoff = 0.2,
                            percentile_no = 10, dynamic = FALSE,
                            method = c("percentile", "pearson", "spearman", "rho", "zi_kendall"), ...){
 
-  require(tidyverse)
-
   if(method == "percentile"){
 
     # get percentile expression
     percentiles <- percentile_expr(data, ids_to_type, percentile_no = percentile_no)
 
     # metatranscripts of clusters: compute mean-summarized percentile expression per transcript
-    metatranscripts <- purrr::map(cluster_list,
+    metatranscripts <- map(cluster_list,
                            ~(percentiles[,.] %>% as_tibble %>% rowMeans %>% enframe(value = "mean_percentile")))
-    metatr.df <- purrr::map(metatranscripts, dplyr::select, mean_percentile) %>% bind_cols
+    metatr.df <- map(metatranscripts, select, mean_percentile) %>% bind_cols
     colnames(metatr.df) <- seq(1, length(cluster_list))
 
     # get correlation between metatranscripts of all clusters
-    cors.meta <- cor(metatr.df)
+    cors.meta <- stats::cor(metatr.df)
     # discard negative correlations
     cors.meta[cors.meta < 0] <- 0
 
   } else if(method != "percentile"){
 
     # get metatranscripts (mean expression of clusters)
-    metatr.df <- purrr::map(cluster_list,
+    metatr.df <- map(cluster_list,
                      ~(data[.,] %>% colMeans %>% enframe(value = "cluster_mean", name = NULL))) %>% bind_cols
     colnames(metatr.df) <- seq(1, length(cluster_list))
 
     if(method == "rho"){
       # use dismay function to calculate correlation between metatranscripts
-      cors.meta <- dismay(metatr.df %>% as.matrix, metric = "rho_p", select = colnames(metatr.df))
+      cors.meta <- dismay::dismay(metatr.df %>% as.matrix, metric = "rho_p", select = colnames(metatr.df))
 
     }else if(method == "zi_kendall"){
       # use dismay function to calculate correlation between metatranscripts
-      cors.meta <- dismay(metatr.df %>% as.matrix, metric = "zi_kendall")
+      cors.meta <- dismay::dismay(metatr.df %>% as.matrix, metric = "zi_kendall")
 
     }else {
       # get correlation between metatranscripts of all clusters
-      cors.meta <- cor(metatr.df, method = method)
+      cors.meta <- stats::cor(metatr.df, method = method)
       # discard negative correlations
       cors.meta[cors.meta < 0] <- 0
     }
   }
 
   # clustering of the metatranscritps (i.e. the cluster profiles) by correlation
-  dist.meta <- as.dist(1 - cors.meta)
-  h.meta <- hclust(dist.meta, method = "complete")
+  dist.meta <- stats::as.dist(1 - cors.meta)
+  h.meta <- stats::hclust(dist.meta, method = "complete")
   # create groups from the dendrogram
   if(dynamic == TRUE){
-    require(dynamicTreeCut)
-    hcut <- cutreeHybrid(h.meta, as.matrix(dist.meta), minClusterSize = 1, ...)
+    hcut <- dynamicTreeCut::cutreeHybrid(h.meta, as.matrix(dist.meta), minClusterSize = 1, ...)
     hcut <- hcut$labels
   } else if(dynamic == FALSE){
-    hcut <- cutree(h.meta, h = height_cutoff, k = cutree_no)
+    hcut <- stats::cutree(h.meta, h = height_cutoff, k = cutree_no)
   }
 
   # merge groups of similar clusters
-  merge <- split(h.meta$labels, hcut) %>% purrr::map(as.integer)
-  clusters_merged <- purrr::map(merge, ~(cluster_list[.] %>% unlist))
+  merge <- split(h.meta$labels, hcut) %>% map(as.integer)
+  clusters_merged <- map(merge, ~(cluster_list[.] %>% unlist))
 
   # return a list of merged groups as well as the clusters after merging
   return(list(merged_groups = merge, clusters = clusters_merged))
@@ -269,8 +261,6 @@ merge_clusters <- function(data, cluster_list, ids_to_type, height_cutoff = 0.2,
 #' @export
 filter_coDS <- function(cluster_list, gene2tr){
 
-  require(tidyverse)
-
   message(paste("Total no. of clusters:", length(cluster_list), sep = " "))
   message(paste("Total isoforms in clusters:", unlist(cluster_list) %>% length), sep = " ")
 
@@ -281,31 +271,31 @@ filter_coDS <- function(cluster_list, gene2tr){
       # split/group transcripts by gene IDs
       clustered_g <- split(clustered_tr, gene2tr[match(clustered_tr, gene2tr$transcript_id),]$gene_id)
       # count no. of transcripts per gene in the clusters
-      ntr <- purrr::map_int(clustered_g, length)
+      ntr <- map_int(clustered_g, length)
       # find genes with > 1 isoform clustered
       gmulti <- ntr[ntr > 1]
       # find transcripts from genes with > 1 isoform clustered
       multi_tr <- unlist(clustered_g[names(gmulti)])
       # filter clusters to keep only transcripts with multiple same-gene transcripts
-      clusters_multi <- purrr::map(cluster_list, ~(.[. %in% multi_tr]))
+      clusters_multi <- map(cluster_list, ~(.[. %in% multi_tr]))
 
   message(paste("Isoforms clustered after coordination filter:", unlist(clusters_multi) %>% length, sep = " "))
 
   # filter out transcripts from genes with all isoforms in same cluster
 
       # convert clusters to gene IDs
-      clusters_multi.gene <- purrr::map(clusters_multi, ~(gene2tr[match(., gene2tr$transcript_id),]$gene_id))
+      clusters_multi.gene <- map(clusters_multi, ~(gene2tr[match(., gene2tr$transcript_id),]$gene_id))
 
       # find no. of clusters where each gene has isoforms
-      gene_distribution <- purrr::map(clusters_multi.gene, ~(names(gmulti) %in% .)) %>% bind_rows %>% t
+      gene_distribution <- map(clusters_multi.gene, ~(names(gmulti) %in% .)) %>% bind_rows %>% t
       colnames(gene_distribution) <- names(gmulti)
       gene_distribution <- colSums(gene_distribution)
       # find differentially spliced genes (i.e. isoforms in more than one cluster)
       genes_ds <- gene_distribution[gene_distribution > 1]
 
       # filter clusters to only keep transcripts from ds genes
-      tr_ds.idx <- purrr::map(clusters_multi.gene, ~(which(. %in% names(genes_ds))))
-      clusters_ds <- purrr::map2(clusters_multi, tr_ds.idx, ~(.x[.y]))
+      tr_ds.idx <- map(clusters_multi.gene, ~(which(. %in% names(genes_ds))))
+      clusters_ds <- map2(clusters_multi, tr_ds.idx, ~(.x[.y]))
 
   message(paste("Isoforms clustered after differential splicing filter:", unlist(clusters_ds) %>% length, sep = " "))
 
@@ -317,8 +307,6 @@ filter_coDS <- function(cluster_list, gene2tr){
 
 #' @export
 scale_range <- function(data){
-
-  require(tidyverse)
 
   # handle rownames
   id <- str_detect(colnames(data), "transcript")
@@ -348,10 +336,6 @@ scale_range <- function(data){
 plot_avg_expr <- function(data, tr_names, cell_types, plot_title = NULL, return = FALSE,
                           labels = NULL){
 
-  require(plotrix)
-  require(tidyverse)
-  require(cowplot)
-
   # handle rownames
   id <- str_detect(colnames(data), "transcript")
 
@@ -363,14 +347,14 @@ plot_avg_expr <- function(data, tr_names, cell_types, plot_title = NULL, return 
 
   # calculate mean by cell type
   splt <- data[tr_names, ] %>% t %>% as.data.frame %>% split(cell_types)
-  means <- purrr::map(splt, colMeans) %>% purrr::map(enframe, name = "transcript_id", value = "expression")
+  means <- map(splt, colMeans) %>% map(enframe, name = "transcript_id", value = "expression")
   # format as data frame
   means <- bind_rows(means, .id = "cell_type")
 
   # calculate standard error by cell type
-  errors <- purrr::map(splt, ~(apply(., 2, std.error) %>% as.data.frame))
+  errors <- map(splt, ~(apply(., 2, plotrix::std.error) %>% as.data.frame))
   # format as data.frame
-  errors <- purrr::map(errors, rownames_to_column) %>% bind_rows
+  errors <- map(errors, rownames_to_column) %>% bind_rows
   # add standard error column to means object
   means <- mutate(means, error = errors$.)
   # format cell type factor
@@ -393,7 +377,6 @@ plot_avg_expr <- function(data, tr_names, cell_types, plot_title = NULL, return 
       geom_line() + geom_point() +
       geom_errorbar(aes(ymin = expression - error, ymax = expression + error), width = 0.1) +
       ylab("Mean expression (scaled)") + xlab("Cell type") +
-      theme_set(theme_cowplot()) +
       theme(legend.title = element_blank(), legend.position = "none")
   }
 }
@@ -402,9 +385,6 @@ plot_avg_expr <- function(data, tr_names, cell_types, plot_title = NULL, return 
 
 #' @export
 calc_avg_profile <- function(data, tr_names, cell_types, plot_title = NULL, return = FALSE){
-
-  require(tidyverse)
-  require(cowplot)
 
   # handle rownames
   id <- str_detect(colnames(data), "transcript")
@@ -416,11 +396,11 @@ calc_avg_profile <- function(data, tr_names, cell_types, plot_title = NULL, retu
 
   # all expression values data frame
   clust_avg <- data[tr_names,] %>% t %>% as.data.frame %>% split(cell_types) %>%
-    purrr::map(~(colMeans(.) %>% enframe(name = "transcript_id", value = "ct_mean"))) %>%
+    map(~(colMeans(.) %>% enframe(name = "transcript_id", value = "ct_mean"))) %>%
     bind_rows(.id = "cell_type")
   # mean profile
-  avg <- aggregate(clust_avg$ct_mean, list(clust_avg$cell_type), mean)
-  sd <- aggregate(clust_avg$ct_mean, list(clust_avg$cell_type), sd)
+  avg <- stats::aggregate(clust_avg$ct_mean, list(clust_avg$cell_type), mean)
+  sd <- stats::aggregate(clust_avg$ct_mean, list(clust_avg$cell_type), sd)
 
   # format mean profile as data frame
   avg_sil <- tibble(tr = rep("silhouette", length(nrow(clust_avg))),
@@ -436,13 +416,13 @@ calc_avg_profile <- function(data, tr_names, cell_types, plot_title = NULL, retu
     # plot all transcripts + mean profile
     avg_all <- plot_avg_expr(data, clust, cell_types, return = TRUE)
     avg <- bind_rows(avg_all, avg_sil)
-    avg <- avg %>% dplyr::mutate(category = factor(c(rep("tr", nrow(avg_all)), rep("sil", nrow(avg_sil))),
+    avg <- avg %>% mutate(category = factor(c(rep("tr", nrow(avg_all)), rep("sil", nrow(avg_sil))),
                                                    levels = c("tr", "sil"),
                                                    labels = c("Transcript", "Mean profile")))
     ggplot(avg, aes(x = cell_type, y = value, colour = category, group = transcript)) + geom_line() + geom_point() +
       # geom_errorbar(aes(ymin = value - error, ymax = value + error), width = 0.1) +
       ylab("Mean expression (scaled)") + xlab("Cell type") + theme(legend.title = element_blank()) +
-      scale_color_manual(values = c("grey", "black")) + theme_set(theme_cowplot())
+      scale_color_manual(values = c("grey", "black"))
   }
 
 }
