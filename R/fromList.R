@@ -1,4 +1,6 @@
 # MODIFIED fromList() FROM UpSetR() PACKAGE THAT KEEPS ROWNAMES
+
+#' @export
 fromList <- function (input) {
   # Same as original fromList()...
   elements <- unique(unlist(input))
