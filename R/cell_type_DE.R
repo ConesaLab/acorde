@@ -1,12 +1,48 @@
 #' @import dplyr
 #' @import purrr
 #' @import tibble
+#' @importFrom Rdpack reprompt
 
-##### FUNCTION TO FILTER BY DIFFERENTIAL EXPRESSION OF ISOFORMS #####
-# data: SCE object containing counts and cell type labels in a cell_type column
+
+
+#' @title Test differential expression of isoforms across cell types
+#'
+#' @description This function provides a wrapper to compute Differential
+#' Expression across multiple cell types on a single-cell dataset, using
+#' standard bulk tools edgeR and DESeq2 and ZINBWaVE weights, as described
+#' by Van den Berge et al. (see references below).
+#'
+#' @param data A SingleCellExperiment (SCE) object including isoform-level counts
+#' on the \code{assay()} slot and a \code{cell_type} column indicating cell type correspondence
+#' in the \code{colData()} slot.
+#' @param mode A character value indicating whether \code{"edgeR"},
+#' \code{"DESeq2"} or \code{"both"} DE methods are to be run.
+#' @param compute_weights A logical value. If \code{TRUE}, cell-level weights
+#' will be computed using ZINBWaVE (see \code{\link[zinbwave]{zinbwave}}).
+#' Alternatively, weights may be pre-computed and stored in the \code{weights()}
+#' slot in the SCE object.
+#' @param AdjPvalue A numeric value. If provided, filtering of DE results by
+#' adjusted p-value is enabled.
+#' @param offset Optionally, a matrix containing offset information to be
+#' considered for bias correction in edgeR and/or DESeq2 DE tests.
+#'
+#' @return If \code{mode = "both"}, a named list containing the results (filtered
+#' or not, depending on whether \code{AdjPvalue} is provided) of testing
+#' Differential Expression using edgeR and DESeq2. If the \code{mode} argument
+#' was used to select only one method, the function returns a data.frame object
+#' containing the results table obtained by that method.
+#'
+#' @references
+#' \insertRef{Robinson2009}{acorde}
+#'
+#' \insertRef{Love2014}{acorde}
+#'
+#' \insertRef{VandenBerge2018}{acorde}
+#'
 #' @export
-cell_type_DE <- function(data, pvalue_filter = 0.05, mode = c("edgeR", "DESeq2", "both"),
-                         compute_weights = TRUE, offset = NULL){
+cell_type_DE <- function(data, mode = c("edgeR", "DESeq2", "both"),
+                         compute_weights = TRUE,
+                         AdjPvalue = NULL, offset = NULL){
 
   mode <- match.arg(mode)
 
@@ -32,7 +68,7 @@ cell_type_DE <- function(data, pvalue_filter = 0.05, mode = c("edgeR", "DESeq2",
     data <- zinbwave::zinbwave(data, observationalWeights = TRUE)
 
   } else {
-    message("Warning: compute_weights = FALSE.
+    message("Note: compute_weights = FALSE.
             Weights will be required to be pre-computed and stored in the
             SCE object.")
   }
@@ -56,9 +92,17 @@ cell_type_DE <- function(data, pvalue_filter = 0.05, mode = c("edgeR", "DESeq2",
     fit <- edgeR::glmFit(dge, design)
     lrt <- zinbwave::glmWeightedF(fit, coef = 2:length(unique(data$cell_type)))
 
-    # extract and filter results by p-value threshold
+    # extract results
     edger_results <- lrt$table %>% rownames_to_column("transcript")
-    edger_sig.tr <- filter(edger_results, padjFilter < pvalue_filter) %>% as_tibble()
+
+    # if provided, filter by p-value threshold
+    if(is.null(pvalue_filter) == FALSE){
+      edger_sig.tr <- filter(edger_results, padjFilter < AdjPvalue) %>% as_tibble()
+    }else{
+      message("Note: p-value threshold not provided, full edgeR results will be returned.
+              To enable filtering, please set AdjPvalue")
+      edger_sig.tr <- edger_results
+    }
   }
 
 
@@ -79,10 +123,19 @@ cell_type_DE <- function(data, pvalue_filter = 0.05, mode = c("edgeR", "DESeq2",
     # run DESeq() using indications from zinbwave package
     dds <- DESeq2::DESeq(dds, sfType = "poscounts", minReplicatesForReplace = Inf, parallel = TRUE)
 
-    # extract and filter results
+    # extract results
     deseq_results <- results(dds, independentFiltering = FALSE) %>% as.data.frame
-    deseq_sig.tr <- deseq_results %>% rownames_to_column("transcript") %>% as_tibble %>%
-      filter(padj < pvalue_filter)
+
+    # filter by p-value threshold
+    if(is.null(pvalue_threshold) == FALSE){
+      deseq_sig.tr <- deseq_results %>% rownames_to_column("transcript") %>% as_tibble %>%
+        filter(padj < AdjPvalue)
+    }else{
+      message("Note: p-value threshold not provided, full DESeq2 results will be returned.
+              To enable filtering, please set AdjPvalue")
+      deseq_sig.tr <- deseq_results
+    }
+
   }
 
 
@@ -99,11 +152,38 @@ cell_type_DE <- function(data, pvalue_filter = 0.05, mode = c("edgeR", "DESeq2",
   }
 }
 
-##### FUNCTION TO FILTER BY LOW EXPRESSION IN PROPORTION OF A CELL TYPE ####
-filter_ctzeros <- function(data, cell_types, ct_proportion = 0.2, rownames = "transcript_id"){
+
+
+#' @title Filter isoforms by maximum cell type-level proportion of zeros
+#'
+#' @description For convenience, \code{acorde} includes a function to assist
+#' lenient filtering of isoforms based on the proportion of zero expression values
+#' across cell types. Based on this criteria, a minimum number of cells must have
+#' non-zero expression in at least one cell type.
+#'
+#' @param data A data.frame or tibble object including isoforms as rows and cells as columns.
+#' Isoform IDs can be included as row names (data.frame) or as an additional column (tibble).
+#' @param cell_types A character vector including cell type information for all the
+#' cells in \code{data}, in the right order. Vector length should be equal to
+#' the total number of cell columns in \code{data}.
+#' @param ct_proportion A numeric indicating the minimum proportion of cells with
+#' non-zero expression that will be allowed per cell type. Isoforms with a non-zero
+#' value proportion above the threshold in at least one cell type will be flagged
+#' to be preserved. Defaults to 0.2 (i.e. 20%).
+#' @param rownames If a tibble is provided in \code{data} a character value
+#' indicating the name of the column in which isoform IDs are specified.
+#'
+#' @return A logical vector including one entry per isoform in \code{data}. Isoforms
+#' meeting the sparsity criteria will have a value of \code{TRUE}, and otherwise
+#' be labeled as \code{FALSE}. This logical vector can then be used to filter
+#' isoforms, i.e. the rows in \code{data}.
+#'
+detect_sparse <- function(data, cell_types, ct_proportion = 0.2, isoform_col = NULL){
 
   # handle rownames
-  data <- data %>% as.data.frame %>% column_to_rownames(rownames)
+  if(is.null(rownames) == FALSE){
+    data <- data %>% as.data.frame %>% column_to_rownames(isoform_col)
+  }
 
   # test number of zeros in each cell type
   split <- split(data %>% t %>% as.data.frame, cell_types)
@@ -113,7 +193,7 @@ filter_ctzeros <- function(data, cell_types, ct_proportion = 0.2, rownames = "tr
   lgl <- map(test_zero, ~(colSums(.) >= nrow(.)*ct_proportion))
   allct_lgl <- bind_rows(lgl)
 
-  # no. of zeros should be higher than proportion in at least one cell type
+  # no. of non-zero values should be higher than proportion in at least one cell type
   final_lgl <- rowSums(allct_lgl) >= 1
 
   return(final_lgl)
@@ -122,8 +202,35 @@ filter_ctzeros <- function(data, cell_types, ct_proportion = 0.2, rownames = "tr
 
 # FUNCTION TO RUN ONE DOWNSAMPLING ITERATION
 
+#' @title Run one downsampling iteration on Tasic et al. dataset
+#'
+#' @description Function designed to pack random cell downsampling code to ease
+#' running multiple iterations of this process during \code{acorde} benchmarking.
+#' Each of these iterations includes three steps: randomly selecting a number of
+#' cells form the specified cell types, subsetting the expression matrix and
+#' creating an SCE object including ZINBWaVE weights for DE testing
+#' (see \code{\link{cell_type_DE}}).
+#'
+#' @param data A data frame or tibble object including isoforms as rows and cells
+#' as columns. Isoform IDs should be included in an independent column, not defined
+#' as \code{rownames}.
+#' @param id_table A data frame including two columns named \code{cell} and
+#' \code{cell_type}, in which correspondence between cell ID and cell type should be
+#' provided.
+#' @param downsampling_ct A character vector including one or more cell type names
+#' (matching those in \code{id_table$cell_type}) to be targeted by downsampling.
+#' @param cell_no A numeric indicating the number of cells to be randomly sampled
+#' during downsampling. Should be the same for all targeted cell types.
+#' @param isoform_col Name of the column in \code{data} that contains isoform IDs.
+#'
+#' @return An SCE object containing the data after downsampling in
+#' \code{assay(counts = data)} and \code{id_table} as
+#' metadata in the \code{colData()} slot. This format corresponds to the input of
+#' \code{\link{cell_type_DE}}.
+#'
 #' @export
-run_downsampling <- function(data, cell_types, cell_no = 45){
+run_downsampling <- function(data, id_table, downsampling_ct,
+                             cell_no, isoform_col = "transcript_id"){
 
   message("Downsampling data...")
 
@@ -136,29 +243,28 @@ run_downsampling <- function(data, cell_types, cell_no = 45){
   }
 
   # randomly sample 50 cells from each neural type
-  gaba_ids <- filter(cell_types, cell_type == "GABA-ergic Neuron") %>%
-    select(run) %>% unlist %>% sample(45)
-  glut_ids <- filter(cell_types, cell_type == "Glutamatergic Neuron") %>%
-    select(run) %>% unlist %>% sample(45)
-  noneur_ids <- filter(cell_types, cell_type != "Glutamatergic Neuron" &
-                         cell_type != "GABA-ergic Neuron") %>%
-    select(run) %>% unlist
+  down_ids <- map(downsampling_ct,
+                  ~filter(id_table, cell_type == .) %>%
+                    select(cell) %>%
+                    unlist %>% sample(cell_no))
+  full_ids <- filter(id_table, !(cell_type %in% downsampling_ct)) %>%
+    select(cell_id_column) %>% unlist
 
-  # subset expression matrix
-  data_down <- data[,c("transcript_id", gaba_ids, glut_ids, noneur_ids)]
-  # subset metadata and reorder columns in matrix
-  cell_types <- filter(cell_types, run %in% colnames(data_down %>% select(-transcript_id)))
-  data_down <- data_down[, c("transcript_id", cell_types$run)]
+  # subset expression data frame
+  data_down <- data[,c(isoform_col, unlist(down_ids), full_ids)]
+  # subset metadata and reorder columns in data frame
+  id_table <- filter(id_table, cell %in% colnames(data_down %>% select(-transcript_id)))
+  data_down <- data_down[, c(isoform_col, id_table$cell)]
 
   # repeat filtering: ensure high proportion of expression in at least one cell type
-  keep_tr <- filter_ctzeros(data_down, cell_types$cell_type, ct_proportion = 0.25)
+  keep_tr <- detect_sparse(data_down, id_table$cell_type, ct_proportion = 0.25)
   data_down <- data_down[keep_tr,]
   message(paste0("Total genes to be tested for DE: ", nrow(data_down)))
 
   # create SCE object
   sce <- SingleCellExperiment::SingleCellExperiment(
-    assays = list(counts = column_to_rownames(data_down, "transcript_id") %>% as.matrix %>% round),
-    colData = cell_types)
+    assays = list(counts = column_to_rownames(data_down, isoform_col) %>% as.matrix %>% round),
+    colData = id_table)
 
   # calculate weights
   message("Calculating ZINBWaVE weights...")

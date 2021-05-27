@@ -23,6 +23,7 @@ Imports:
     MASS,
     purrr,
     plotrix,
+    Rdpack,
     stats,
     stringr,
     tidyr,
@@ -35,4 +36,6 @@ Suggests:
     SingleCellExperiment,
     SummarizedExperiment,
     zinbwave
+RdMacros:
+    Rdpack
 
