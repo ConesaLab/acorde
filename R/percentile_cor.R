@@ -3,23 +3,42 @@
 #' @import tibble
 #' @import stringr
 
-##### FUNCTIONS TO COMPUTE PERCENTILE CORRELATIONS BETWEEN ISOFORMS #####
-# data: a matrix or data frame with transcript IDs in rownames
-# (or, in the case of a data frame, in the first column
-# i.e. see rownames_to_column() function from the tibble package)
-# ids_to_type: a data frame with cell ids in the first column and cell type labels
-# in the second column
 
+#' @title Summarize cell type-level expression using percentiles
+#'
+#' @description For each of the isoforms in the single-cell data set,
+#' the function calculates percentile values using cell type-level expression values,
+#' providing an estimate of the expression distribution shown by a particular
+#' isoform in each of the cell types.
+#'
+#' @param data A data.frame or tibble object including isoforms as rows and
+#' cells as columns. Isoform IDs can be included as row names (data.frame)
+#' or as an additional column (tibble).
+#' @param id_table A data frame including two columns named \code{cell} and
+#' \code{cell_type}, in which correspondence between cell ID and cell type should be
+#' provided. The number of rows should be equal to the total number of
+#' cell columns in \code{data}, and the order of the \code{cell} column should
+#' match column (i.e. cell) order in \code{data}.
+#' @param percentile_no Integer indicating the number of percentiles to generate
+#' for each of the cell types. Should always be higher than 4 (quantiles)
+#' and lower than 100 (percentiles). Defaults to 10.
+#' @param isoform_col When a tibble is provided in \code{data}, a character value
+#' indicating the name of the column in which isoform IDs are specified.
+#'
+#' @return A \code{\link[tibble]{tibble}} containing one column of percentile-
+#' summarized expression values per input transcript
+#' in \code{data}.
+#'
 #' @export
-percentile_expr <- function(data, ids_to_type, percentile_no){
+percentile_expr <- function(data, id_table, percentile_no = 10, isoform_col = NULL){
 
   # handle rownames and data type
-  if(str_detect(colnames(data), "transcript") %>% sum == 0 || is.matrix(data) == TRUE){
+  if(is.null(isoform_col) == TRUE){
     data <- data %>% as.data.frame %>% rownames_to_column("transcript")
   }
 
   # split cell IDs by cell type labels
-  cells_split <- split(ids_to_type[[1]], ids_to_type[[2]])
+  cells_split <- split(id_table$cell, id_table$cell_type)
 
   # check that percentile_no is between 4 and 100
   if(percentile_no < 4 | percentile_no > 100){
@@ -38,11 +57,36 @@ percentile_expr <- function(data, ids_to_type, percentile_no){
 }
 
 
+#' @title Compute percentile correlations between a set of transcripts
+#'
+#' @description This function summarizes expression for each cell type
+#' using percentiles and then calculates Pearson correlations between all possible
+#' transcript pairs in the data set. Internally, the function function calls
+#' \code{\link{percentile_expr}} to generate percentile-summarized expression, and
+#' then \code{\link[stats]{cor}} to compute Pearson correlation
+#'
+#' @param data A data.frame or tibble object including isoforms as rows and
+#' cells as columns. Isoform IDs can be included as row names (data.frame)
+#' or as an additional column (tibble).
+#' @param id_table A data frame including two columns named \code{cell} and
+#' \code{cell_type}, in which correspondence between cell ID and cell type should be
+#' provided. The number of rows should be equal to the total number of
+#' cell columns in \code{data}, and the order of the \code{cell} column should
+#' match column (i.e. cell) order in \code{data}.
+#' @param percentile_no Integer indicating the number of percentiles to generate
+#' for each of the cell types. Should always be higher than 4 (quantiles)
+#' and lower than 100 (percentiles). Defaults to 10.
+#' @param isoform_col When a tibble is provided in \code{data}, a character value
+#' indicating the name of the column in which isoform IDs are specified.
+#'
+#' @return A correlation matrix including one column-row pair per isoform
+#' included in \code{data}.
+#'
 #' @export
-percentile_cor <- function(data, ids_to_type, percentile_no = 10){
+percentile_cor <- function(data, id_table, percentile_no = 10, isoform_col = NULL){
 
   # get percentile expression
-  percentiles <- percentile_expr(data, ids_to_type, percentile_no)
+  percentiles <- percentile_expr(data, id_table, percentile_no, isoform_col)
 
   # calculate correlations
   cors <- stats::cor(percentiles)
