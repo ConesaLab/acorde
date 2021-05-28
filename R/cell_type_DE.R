@@ -163,14 +163,16 @@ cell_type_DE <- function(data, mode = c("edgeR", "DESeq2", "both"),
 #'
 #' @param data A data.frame or tibble object including isoforms as rows and cells as columns.
 #' Isoform IDs can be included as row names (data.frame) or as an additional column (tibble).
-#' @param cell_types A character vector including cell type information for all the
-#' cells in \code{data}, in the right order. Vector length should be equal to
-#' the total number of cell columns in \code{data}.
+#' @param id_table A data frame including two columns named \code{cell} and
+#' \code{cell_type}, in which correspondence between cell ID and cell type should be
+#' provided. The number of rows should be equal to the total number of
+#' cell columns in \code{data}, and the order of the \code{cell} column should
+#' match column (i.e. cell) order in \code{data}.
 #' @param ct_proportion A numeric indicating the minimum proportion of cells with
 #' non-zero expression that will be allowed per cell type. Isoforms with a non-zero
 #' value proportion above the threshold in at least one cell type will be flagged
 #' to be preserved. Defaults to 0.2 (i.e. 20%).
-#' @param rownames If a tibble is provided in \code{data} a character value
+#' @param isoform_col When a tibble is provided in \code{data} a character value
 #' indicating the name of the column in which isoform IDs are specified.
 #'
 #' @return A logical vector including one entry per isoform in \code{data}. Isoforms
@@ -178,7 +180,7 @@ cell_type_DE <- function(data, mode = c("edgeR", "DESeq2", "both"),
 #' be labeled as \code{FALSE}. This logical vector can then be used to filter
 #' isoforms, i.e. the rows in \code{data}.
 #'
-detect_sparse <- function(data, cell_types, ct_proportion = 0.2, isoform_col = NULL){
+detect_sparse <- function(data, id_table, ct_proportion = 0.2, isoform_col = NULL){
 
   # handle rownames
   if(is.null(rownames) == FALSE){
@@ -186,7 +188,7 @@ detect_sparse <- function(data, cell_types, ct_proportion = 0.2, isoform_col = N
   }
 
   # test number of zeros in each cell type
-  split <- split(data %>% t %>% as.data.frame, cell_types)
+  split <- split(data %>% t %>% as.data.frame, id_table$cell_type)
   test_zero <- map(split, ~(. > 0))
 
   # compare to cell type proportion threshold

@@ -4,22 +4,24 @@
 \alias{detect_sparse}
 \title{Filter isoforms by maximum cell type-level proportion of zeros}
 \usage{
-detect_sparse(data, cell_types, ct_proportion = 0.2, isoform_col = NULL)
+detect_sparse(data, id_table, ct_proportion = 0.2, isoform_col = NULL)
 }
 \arguments{
 \item{data}{A data.frame or tibble object including isoforms as rows and cells as columns.
 Isoform IDs can be included as row names (data.frame) or as an additional column (tibble).}
 
-\item{cell_types}{A character vector including cell type information for all the
-cells in \code{data}, in the right order. Vector length should be equal to
-the total number of cell columns in \code{data}.}
+\item{id_table}{A data frame including two columns named \code{cell} and
+\code{cell_type}, in which correspondence between cell ID and cell type should be
+provided. The number of rows should be equal to the total number of
+cell columns in \code{data}, and the order of the \code{cell} column should
+match column (i.e. cell) order in \code{data}.}
 
 \item{ct_proportion}{A numeric indicating the minimum proportion of cells with
 non-zero expression that will be allowed per cell type. Isoforms with a non-zero
 value proportion above the threshold in at least one cell type will be flagged
 to be preserved. Defaults to 0.2 (i.e. 20%).}
 
-\item{rownames}{If a tibble is provided in \code{data} a character value
+\item{isoform_col}{When a tibble is provided in \code{data} a character value
 indicating the name of the column in which isoform IDs are specified.}
 }
 \value{
