@@ -10,8 +10,8 @@ detect_sparse(data, id_table, ct_proportion = 0.2, isoform_col = NULL)
 \item{data}{A data.frame or tibble object including isoforms as rows and cells as columns.
 Isoform IDs can be included as row names (data.frame) or as an additional column (tibble).}
 
-\item{id_table}{A data frame including two columns named \code{cell} and
-\code{cell_type}, in which correspondence between cell ID and cell type should be
+\item{id_table}{A data frame including two columns named \code{cell} and \code{cell_type},
+in which correspondence between cell ID and cell type should be
 provided. The number of rows should be equal to the total number of
 cell columns in \code{data}, and the order of the \code{cell} column should
 match column (i.e. cell) order in \code{data}.}

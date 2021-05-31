@@ -163,23 +163,27 @@ cell_type_DE <- function(data, mode = c("edgeR", "DESeq2", "both"),
 #'
 #' @param data A data.frame or tibble object including isoforms as rows and cells as columns.
 #' Isoform IDs can be included as row names (data.frame) or as an additional column (tibble).
-#' @param id_table A data frame including two columns named \code{cell} and
-#' \code{cell_type}, in which correspondence between cell ID and cell type should be
+#'
+#' @param id_table A data frame including two columns named \code{cell} and \code{cell_type},
+#' in which correspondence between cell ID and cell type should be
 #' provided. The number of rows should be equal to the total number of
 #' cell columns in \code{data}, and the order of the \code{cell} column should
 #' match column (i.e. cell) order in \code{data}.
+#'
 #' @param ct_proportion A numeric indicating the minimum proportion of cells with
 #' non-zero expression that will be allowed per cell type. Isoforms with a non-zero
 #' value proportion above the threshold in at least one cell type will be flagged
 #' to be preserved. Defaults to 0.2 (i.e. 20%).
+#'
 #' @param isoform_col When a tibble is provided in \code{data} a character value
 #' indicating the name of the column in which isoform IDs are specified.
 #'
-#' @return A logical vector including one entry per isoform in \code{data}. Isoforms
+#' @return  A logical vector including one entry per isoform in \code{data}. Isoforms
 #' meeting the sparsity criteria will have a value of \code{TRUE}, and otherwise
 #' be labeled as \code{FALSE}. This logical vector can then be used to filter
 #' isoforms, i.e. the rows in \code{data}.
 #'
+#' @export
 detect_sparse <- function(data, id_table, ct_proportion = 0.2, isoform_col = NULL){
 
   # handle rownames
