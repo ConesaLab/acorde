@@ -3,15 +3,47 @@
 #' @import dplyr
 #' @import tibble
 
-##### FUNCTION TO FIND SHARED GENES #####
-# gene2tr: data frame containing transcript_id and gene_id columns,
-#indicating gene-isoform correspondence.
 
+#' @title Detect shared genes for co-Differential Isoform Usage analysis
+#'
+#' @description This function reports pairs of genes that present co-expressed
+#' isoforms given a list of previously-detected isoform clusters.
+#' The aim is to enable co-Differential Isoform Usage (co-DIU) analysis on the
+#' returned gene pairs, which will be candidates for co-DIU.
+#'
+#' @param cluster_list A list of character vectors containing isoform IDs.
+#' Each element of the list represents a cluster of isoforms.
+#' @param gene_tr_table A data.frame or tibble object containing two columns
+#' named \code{transcript_id} and \code{gene_id}, indicating gene-isoform
+#' correspondence.
+#'
+#' @details We define coordinated splicing patterns as a situation where
+#' post-transcriptional regulation, defined by isoform expression,
+#' can be detected independently of transcriptional regulation,
+#' i.e. gene-level expression. To detect splicing coordination, we defined
+#' co-Differential Isoform Usage (co-DIU) as a pattern where a group of genes
+#' shows co-expression of their isoforms, but no co-expression can be detected
+#' when only gene expression is considered. In the context of our pipeline,
+#' a set of potentially co-DIU genes will have at least two of their isoforms
+#' assigned to the same clusters, therefore showing detectable isoform-level
+#' co-expression, and suggesting coordinated splicing regulation in that group
+#' of genes (see Arzalluz-Luque et al. 2021).
+#'
+#' @return A matrix containing two rows and as many columns as potentially
+#' co-DIU gene pairs detected, that is, genes co-expressing isoforms across
+#' two or more clusters. Genes will be represented by the IDs provided in
+#' \code{{gene_tr_table}}.
+#'
+#' @references
+#'
+#' \insertRef{Arzalluz-Luque2021}{acorde}
+#'
 #' @export
-find_shared_genes <- function(cluster_list, gene2tr){
+find_shared_genes <- function(cluster_list, gene_tr_table){
 
   # convert clusters to gene IDs
-  cluster_list.gene <- map(cluster_list, ~gene2tr[match(., gene2tr$transcript_id),]$gene_id)
+  cluster_list.gene <- map(cluster_list,
+                           ~gene_tr_table[match(., gene_tr_table$transcript_id),]$gene_id)
 
   # find intersections with modified UpSetR fromList() function
   gene_occurrence <- fromList(cluster_list.gene)
@@ -29,9 +61,19 @@ find_shared_genes <- function(cluster_list, gene2tr){
   return(pairs)
 }
 
-##### FUNCTION TO CHECK CO-OCCURRENCE OF A GENE PAIR ACROSS CLUSTERS ####
-# function called internally by find_shared_genes() to iteratively
-# check each gene pair for co-occurrence
+
+#' @title Check isoform co-expression patterns for a gene pair across clusters
+#'
+#' @description This function is called internally by \code{\link{find_shared_genes}}
+#' to iteratively check each gene pair for isoform co-expression.
+#'
+#' @param pair A character vector of length 2 containing gene IDs for a candidate
+#' gene pair.
+#' @param intersections A data.frame including binary presence/absence patterns
+#' for genes across clusters. Typically, the output of \code{\link{fromList}}.
+#'
+#' @return A logical indicating whether the pair of genes under evaluation presents
+#' isoform co-expression across any of the analyzed clusters.
 check_gene_pair <- function(pair, intersections){
 
   check <- sum(colSums(intersections[pair, ]) == 2) >= 2
@@ -39,17 +81,58 @@ check_gene_pair <- function(pair, intersections){
 }
 
 
-##### FUNCTION TO STATISTICALLY TEST ALL SHARED GENES #####
-
+#' @title Statistical testing of candidate co-DIU genes
+#'
+#' @description Pairwise statistical testing of co-Differential Isoform Usage
+#' relationships. For a selected set of gene pairs showing co-expression of
+#' isoforms across clusters (see \code{\link{find_shared_genes}}), this
+#' function tests the significance of the detected co-DIU patterns.
+#'
+#' @details A set of potentially co-DIU genes will have at least two of their
+#' isoforms assigned to the same clusters, i.e. show detectable
+#' isoform-level co-expression. However, since clustering allows isoforms
+#' with slightly variable expression patterns to be clustered together,
+#' some isoforms might be assigned to clusters that do not faithfully represent their
+#' expression profile, leading to detection of false-positive co-DIU genes.
+#' To avoid this, the present function applies a regression model and a statistical
+#' test to each of the candidate pair of genes (hereby named
+#' gene 1 and gene 2), where at least two of the isoforms of each gene must
+#' belong to the same two clusters (hereby named cluster 1 and cluster 2).
+#'
+#' Briefly, we need to assess whether expression values for the isoforms follow
+#' a correct co-DIU pattern, that is, the average profile across cell types of
+#' the two isoforms in cluster 1 must be significantly different to the average
+#' profile of the two isoforms in cluster 2, indicating distinct expression
+#' profiles for the two isoforms of each gene. In addition, the average profile
+#' of the two isoforms of gene 1 must not be different to the average profile of
+#' the two isoforms of gene 2, indicating that co-expression is only detectable
+#' when isoform-level expression is considered.
+#'
+#' Internally, the function fits a generalized linear regression model (GLM) using
+#' the \code{\link[stats]{glm}} function, using the \code{\link[MASS]{negative.binomial}}
+#' function in the \code{MASS} package to set the error distribution and link
+#' function of the model via the \code{family} argument. To test the
+#' significance of the \emph{cluster*cell type}
+#' and \emph{gene*cell type} interactions (as described above), we calculated
+#' type-II analysis-of-variance (ANOVA) tables for the model using a
+#' likelihood-ratio chi-square test using the \code{\link[car]{Anova}} function in
+#' the \code{car} package (given the unbalanced design).
+#'
+#' @references
+#'
+#' \insertRef{Venables2002}{acorde}
+#'
+#' \insertRef{Fox2019}{acorde}
+#'
 #' @export
-test_shared_genes <- function(data, cluster_list, shared_genes, gene2tr, cell_types){
+test_shared_genes <- function(data, cluster_list, shared_genes, gene_tr_table, cell_types){
 
   pair_seq <- seq(1, ncol(shared_genes))
 
   # run ANOVA test for each gene pair with model fit and test error handling
   pvalues <- future_map(pair_seq,
                         ~tryCatch(make_test(shared_genes[,.],
-                                     data, cluster_list, gene2tr, cell_types),
+                                     data, cluster_list, gene_tr_table, cell_types),
                                   error = function(c){
                                   msg <- conditionMessage(c)
                                   message(paste("Couldn't test pair",
