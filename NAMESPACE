@@ -3,6 +3,7 @@
 export(calc_avg_profile)
 export(cell_type_DE)
 export(cluster_isoforms)
+export(detect_sparse)
 export(expand_clusters)
 export(filter_clusterQC)
 export(filter_coDS)
