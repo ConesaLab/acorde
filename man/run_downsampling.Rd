@@ -4,16 +4,10 @@
 \alias{run_downsampling}
 \title{Run one downsampling iteration on Tasic et al. dataset}
 \usage{
-run_downsampling(
-  data,
-  id_table,
-  downsampling_ct,
-  cell_no,
-  isoform_col = "transcript_id"
-)
+run_downsampling(data, id_table, downsampling_ct, cell_no, isoform_col = NULL)
 }
 \arguments{
-\item{data}{A data frame or tibble object including isoforms as rows and cells
+\item{data}{A data.frame or tibble object including isoforms as rows and cells
 as columns. Isoform IDs should be included in an independent column, not defined
 as \code{rownames}.}
 
@@ -27,7 +21,9 @@ provided.}
 \item{cell_no}{A numeric indicating the number of cells to be randomly sampled
 during downsampling. Should be the same for all targeted cell types.}
 
-\item{isoform_col}{Name of the column in \code{data} that contains isoform IDs.}
+\item{isoform_col}{Name of the column in \code{data} that contains isoform IDs.
+Otherwise, isoform identifiers will be assumed to be defined as rownames,
+and this argument will not need to be provided.}
 }
 \value{
 An SCE object containing the data after downsampling in

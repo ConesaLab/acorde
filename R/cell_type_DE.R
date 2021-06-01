@@ -12,9 +12,10 @@
 #' standard bulk tools edgeR and DESeq2 and ZINBWaVE weights, as described
 #' by Van den Berge et al. (see references below).
 #'
-#' @param data A SingleCellExperiment (SCE) object including isoform-level counts
-#' on the \code{assay()} slot and a \code{cell_type} column indicating cell type correspondence
-#' in the \code{colData()} slot.
+#' @param data A \code{\link[SingleCellExperiment]{SingleCellExperiment}} (SCE)
+#' object including isoform-level counts on the \code{assay()} slot and a
+#' \code{cell_type} column indicating cell type correspondence in the
+#' \code{colData()} slot.
 #' @param mode A character value indicating whether \code{"edgeR"},
 #' \code{"DESeq2"} or \code{"both"} DE methods are to be run.
 #' @param compute_weights A logical value. If \code{TRUE}, cell-level weights
@@ -175,8 +176,10 @@ cell_type_DE <- function(data, mode = c("edgeR", "DESeq2", "both"),
 #' value proportion above the threshold in at least one cell type will be flagged
 #' to be preserved. Defaults to 0.2 (i.e. 20%).
 #'
-#' @param isoform_col When a tibble is provided in \code{data} a character value
+#' @param isoform_col When a tibble is provided in \code{data}, a character object
 #' indicating the name of the column in which isoform IDs are specified.
+#' Otherwise, isoform identifiers will be assumed to be defined as rownames,
+#' and this argument will not need to be provided.
 #'
 #' @return  A logical vector including one entry per isoform in \code{data}. Isoforms
 #' meeting the sparsity criteria will have a value of \code{TRUE}, and otherwise
@@ -217,7 +220,7 @@ detect_sparse <- function(data, id_table, ct_proportion = 0.2, isoform_col = NUL
 #' creating an SCE object including ZINBWaVE weights for DE testing
 #' (see \code{\link{cell_type_DE}}).
 #'
-#' @param data A data frame or tibble object including isoforms as rows and cells
+#' @param data A data.frame or tibble object including isoforms as rows and cells
 #' as columns. Isoform IDs should be included in an independent column, not defined
 #' as \code{rownames}.
 #' @param id_table A data frame including two columns named \code{cell} and
@@ -228,6 +231,8 @@ detect_sparse <- function(data, id_table, ct_proportion = 0.2, isoform_col = NUL
 #' @param cell_no A numeric indicating the number of cells to be randomly sampled
 #' during downsampling. Should be the same for all targeted cell types.
 #' @param isoform_col Name of the column in \code{data} that contains isoform IDs.
+#' Otherwise, isoform identifiers will be assumed to be defined as rownames,
+#' and this argument will not need to be provided.
 #'
 #' @return An SCE object containing the data after downsampling in
 #' \code{assay(counts = data)} and \code{id_table} as
@@ -236,7 +241,7 @@ detect_sparse <- function(data, id_table, ct_proportion = 0.2, isoform_col = NUL
 #'
 #' @export
 run_downsampling <- function(data, id_table, downsampling_ct,
-                             cell_no, isoform_col = "transcript_id"){
+                             cell_no, isoform_col = NULL){
 
   message("Downsampling data...")
 
@@ -246,6 +251,12 @@ run_downsampling <- function(data, id_table, downsampling_ct,
   }
   if(!requireNamespace("SingleCellExperiment", quietly = TRUE)){
     stop("package 'SingleCellExperiment' is required but not installed.")
+  }
+
+  # handle rownames and data type
+  if(is.null(isoform_col) == TRUE){
+    data <- data %>% as.data.frame %>% rownames_to_column("transcript")
+    isoform_col <- "transcript"
   }
 
   # randomly sample 50 cells from each neural type

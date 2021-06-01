@@ -21,8 +21,10 @@ non-zero expression that will be allowed per cell type. Isoforms with a non-zero
 value proportion above the threshold in at least one cell type will be flagged
 to be preserved. Defaults to 0.2 (i.e. 20%).}
 
-\item{isoform_col}{When a tibble is provided in \code{data} a character value
-indicating the name of the column in which isoform IDs are specified.}
+\item{isoform_col}{When a tibble is provided in \code{data}, a character object
+indicating the name of the column in which isoform IDs are specified.
+Otherwise, isoform identifiers will be assumed to be defined as rownames,
+and this argument will not need to be provided.}
 }
 \value{
 A logical vector including one entry per isoform in \code{data}. Isoforms

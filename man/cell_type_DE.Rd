@@ -13,9 +13,10 @@ cell_type_DE(
 )
 }
 \arguments{
-\item{data}{A SingleCellExperiment (SCE) object including isoform-level counts
-on the \code{assay()} slot and a \code{cell_type} column indicating cell type correspondence
-in the \code{colData()} slot.}
+\item{data}{A \code{\link[SingleCellExperiment]{SingleCellExperiment}} (SCE)
+object including isoform-level counts on the \code{assay()} slot and a
+\code{cell_type} column indicating cell type correspondence in the
+\code{colData()} slot.}
 
 \item{mode}{A character value indicating whether \code{"edgeR"},
 \code{"DESeq2"} or \code{"both"} DE methods are to be run.}
