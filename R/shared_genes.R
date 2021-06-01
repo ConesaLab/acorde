@@ -114,13 +114,14 @@ check_gene_pair <- function(pair, intersections){
 #' Otherwise, isoform identifiers will be assumed to be defined as rownames,
 #' and this argument will not need to be provided.
 #'
-#' @details A set of potentially co-DIU genes will have at least two of their
+#' @details A set of \strong{potentially co-DIU genes} will have at least two of their
 #' isoforms assigned to the same clusters, i.e. show detectable
 #' isoform-level co-expression. However, since clustering allows isoforms
 #' with slightly variable expression patterns to be clustered together,
 #' some isoforms might be assigned to clusters that do not faithfully represent their
-#' expression profile, leading to detection of false-positive co-DIU genes.
-#' To avoid this, the present function applies a regression model and a statistical
+#' expression profile, leading to inaccuracies in co-DIU detection.
+#' To \strong{avoid false-positive co-DIU genes}, the present function
+#' applies a regression model and a statistical
 #' test to each of the candidate pair of genes (hereby named
 #' gene 1 and gene 2), where at least two of the isoforms of each gene must
 #' belong to the same two clusters (hereby named cluster 1 and cluster 2).
@@ -134,24 +135,27 @@ check_gene_pair <- function(pair, intersections){
 #' the two isoforms of gene 2, indicating that co-expression is only detectable
 #' when isoform-level expression is considered.
 #'
-#' Internally, the function fits a generalized linear regression model (GLM) using
+#' Internally, the function fits a \strong{generalized linear regression model} (GLM) via
 #' the \code{\link[stats]{glm}} function, using the \code{\link[MASS]{negative.binomial}}
 #' function in the \code{MASS} package to set the error distribution and link
 #' function of the model via the \code{family} argument. To test the
 #' significance of the \emph{cluster*cell type}
 #' and \emph{gene*cell type} interactions (as described above), we calculated
-#' type-II analysis-of-variance (ANOVA) tables for the model using a
-#' likelihood-ratio chi-square test using the \code{\link[car]{Anova}} function in
+#' \strong{type-II analysis-of-variance} (ANOVA) tables for the model using a
+#' \strong{likelihood-ratio chi-square test} using the \code{\link[car]{Anova}} function in
 #' the \code{car} package (given the unbalanced design).
 #'
-#' @return A list containing one \code{tibble} per tested gene pair. Tibbles will
-#' include two columns: \code{cluster:cell_type} and \code{gene:cell_type},
-#' contain the p-values obtained when testing these interactions.
-#' In some cases the assumptions required for fitting the GLM are not met,
+#' @return A list containing one \code{tibble} per tested gene pair, as generated
+#' by \code{\link{make_test}}. Each tibble will include two columns,
+#' \code{cluster:cell_type} and \code{gene:cell_type}, containing the p-value
+#' obtained when testing each of these interactions in the type-II
+#' ANOVA test.
+#'
+#' \strong{NOTE:} In some cases the assumptions required for fitting the GLM are not met,
 #' and an \code{NA} value is returned instead. These are output to allow users
 #' to control for untested gene pairs, but can easily be removed from the output.
 #'
-#' @seealso For details, see internal functions: \code{\link{make_matrix}},
+#' @seealso For details, see internal functions:
 #' \code{\link{make_design}}, \code{\link{make_test}}.
 #'
 #' @references
@@ -187,18 +191,51 @@ test_shared_genes <- function(data, cluster_list, shared_genes, gene_tr_table,
   return(pvalues)
 }
 
-##### FUNCTION TO TEST INTERACTIONS FOR A GENE PAIR ####
-# called internally by test_shared_genes to test cluster-dependent
-# expression for a pair of shared genes
-make_test <- function(pair, data, cluster_list, gene2tr, cell_types){
+
+
+
+#' @title Perform co-DIU statistical test for one gene pair
+#'
+#' @description This function is called iteratively by \code{\link{test_shared_genes}}
+#' to test cluster-dependent expression for a single pair of candidate co-DIU genes.
+#'
+#' @param pair A character vector of length 2 indicating the gene IDs of
+#' a gene pair to test.
+#'
+#' @param data A data.frame or tibble including isoforms as rows and cells
+#' as columns. Isoform IDs can be included as row names (data.frame) or as an
+#' additional column (tibble).
+#'
+#' @param cluster_list A list of character vectors containing isoform IDs.
+#' Each element of the list represents a cluster of isoforms.
+#'
+#' @param gene_tr_table A data.frame or tibble containing two columns
+#' named \code{transcript_id} and \code{gene_id}, indicating gene-isoform
+#' correspondence.
+#'
+#' @param cell_types A character vector including cell type assignments for
+#' the cell IDs in \code{data}.
+#'
+#' @details Arguments are passed from \code{\link{test_shared_genes}}.
+#'
+#' @return A tibble containing two columns, \code{cluster:cell_type} and
+#' \code{gene:cell_type}, containing the p-value obtained in the likelihood ratio
+#' chi-square test (see \code{\link{test_shared_genes}}) for each of these two
+#' interactions.
+#'
+#' @references
+#'
+#' \insertRef{Venables2002}{acorde}
+#'
+#' \insertRef{Fox2019}{acorde}
+make_test <- function(pair, data, cluster_list, gene_tr_table, cell_types){
 
   # make long matrix with factors and expression
-  design <- make_design(data, cluster_list, gene2tr, cell_types, pair)
+  design <- make_design(pair, data, cluster_list, gene_tr_table, cell_types)
 
   # fit glm for all double interactions
   fit <- stats::glm(expression ~ (gene + cluster + cell_type)^2,
              data = design, family = MASS::negative.binomial(theta = 10), maxit = 200)
-
 
   # perform test
   adev <- car::Anova(fit, type = 2, contrasts=list(topic=stats::contr.sum, sys=stats::contr.sum))
@@ -210,14 +247,40 @@ make_test <- function(pair, data, cluster_list, gene2tr, cell_types){
 }
 
 
-##### FUNCTION TO CREATE DESIGN MATRIX FOR A GENE PAIR ####
-# called internally by test_shared_genes to create design matrix for glm for a given pair of shared genes
-# pair is a character vector with gene names for the selected pair
-make_design <- function(data, cluster_list, gene2tr, cell_types, pair){
+
+#' @title Create design matrix for co-DIU test of a pair of genes
+#'
+#' @description This function is used by \code{\link{test_shared_genes}} to
+#' create a design matrix for GLM fitting using information from a pair of co-DIU
+#' candidategenes, i.e. expression values of the gene's co-expressed isoforms,
+#' cell type labels for cells and cluster labels for isoforms.
+#'
+#' @param pair A character vector of length 2 indicating the gene IDs of
+#' a gene pair to test.
+#'
+#' @param data A data.frame or tibble including isoforms as rows and cells
+#' as columns. Isoform IDs can be included as row names (data.frame) or as an
+#' additional column (tibble).
+#'
+#' @param cluster_list A list of character vectors containing isoform IDs.
+#' Each element of the list represents a cluster of isoforms.
+#'
+#' @param gene_tr_table A data.frame or tibble containing two columns
+#' named \code{transcript_id} and \code{gene_id}, indicating gene-isoform
+#' correspondence.
+#'
+#' @param cell_types A character vector including cell type assignments for
+#' the cell IDs in \code{data}.
+#'
+#' @details Arguments are passed from \code{\link{test_shared_genes}}.
+#'
+#' @return A tibble, containing a long-form table with the required factors for
+#' GLM fitting and statistical testing.
+make_design <- function(pair, data, cluster_list, gene_tr_table, cell_types){
 
   # remake gene_occurrence list
   # convert clusters to gene IDs
-  cluster_list.gene <- map(cluster_list, ~gene2tr[match(., gene2tr$transcript_id),]$gene_id)
+  cluster_list.gene <- map(cluster_list, ~gene_tr_table[match(., gene_tr_table$transcript_id),]$gene_id)
   # find intersections with modified UpSetR fromList() function
   gene_occurrence <- fromList(cluster_list.gene)
 
@@ -240,32 +303,35 @@ make_design <- function(data, cluster_list, gene2tr, cell_types, pair){
       cluster_factor <- factor(rep(seq(nrow(fouriso_expr)/2), each = 2))
       fouriso_expr <- mutate(fouriso_expr, cluster = cluster_factor)
       # long formatting
-      fouriso_expr_long <- tidyr::gather(fouriso_expr, cell_id, expression, -transcript_id, -gene, -cluster)
-      fouriso_expr_long <- mutate(fouriso_expr_long, cell_type = rep(cell_types, each = nrow(fouriso_expr))) %>%
+      fouriso_expr_long <- tidyr::gather(fouriso_expr, cell_id, expression,
+                                         -transcript_id, -gene, -cluster)
+      fouriso_expr_long <- mutate(fouriso_expr_long,
+                                  cell_type = rep(cell_types,
+                                                  each = nrow(fouriso_expr))) %>%
         mutate_at("expression", as.integer)
 
   return(fouriso_expr_long)
 }
 
+
+
 ##### FUNCTION TO CREATE EXPRESSION MATRIX FOR A GENE PAIR ####
 # called internally by test_shared_genes to create one-line expression matrix
 # to test ct-cluster and ct-gene interactions via a glm approach
-make_matrix <- function(data, design){
-
-  # create wide dataession matrix with sample IDs combining cell and transcript
-  data <- data %>% filter(transcript_id %in% unique(design$transcript_id))
-  data_long <- data %>% tidyr::gather(cell_id, expression, -transcript_id)
-  data_wide <- data_long %>% tidyr::pivot_wider(names_from = c(transcript_id, cell_id), values_from = expression)
-
-  # create sample names combining transcript and cell IDs
-  design <- design %>% mutate(sample = paste(transcript_id, cell_id, sep = "_")) %>%
-    select(sample, gene, cluster, cell_type)
-
-  # reorder columns in wide dataession matrix to match design matrix
-  data_wide <- data_wide[,design$sample]
-
-  return(data_wide)
-}
-
-
-
+# make_matrix <- function(data, design){
+#
+#   # create wide dataession matrix with sample IDs combining cell and transcript
+#   data <- data %>% filter(transcript_id %in% unique(design$transcript_id))
+#   data_long <- data %>% tidyr::gather(cell_id, expression, -transcript_id)
+#   data_wide <- data_long %>% tidyr::pivot_wider(names_from = c(transcript_id, cell_id),
+#                                                 values_from = expression)
+#
+#   # create sample names combining transcript and cell IDs
+#   design <- design %>% mutate(sample = paste(transcript_id, cell_id, sep = "_")) %>%
+#     select(sample, gene, cluster, cell_type)
+#
+#   # reorder columns in wide dataession matrix to match design matrix
+#   data_wide <- data_wide[,design$sample]
+#
+#   return(data_wide)
+# }

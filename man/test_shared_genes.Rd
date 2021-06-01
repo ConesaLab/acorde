@@ -41,10 +41,13 @@ Otherwise, isoform identifiers will be assumed to be defined as rownames,
 and this argument will not need to be provided.}
 }
 \value{
-A list containing one \code{tibble} per tested gene pair. Tibbles will
-include two columns: \code{cluster:cell_type} and \code{gene:cell_type},
-contain the p-values obtained when testing these interactions.
-In some cases the assumptions required for fitting the GLM are not met,
+A list containing one \code{tibble} per tested gene pair, as generated
+by \code{\link{make_test}}. Each tibble will include two columns,
+\code{cluster:cell_type} and \code{gene:cell_type}, containing the p-value
+obtained when testing each of these interactions in the type-II
+ANOVA test.
+
+\strong{NOTE:} In some cases the assumptions required for fitting the GLM are not met,
 and an \code{NA} value is returned instead. These are output to allow users
 to control for untested gene pairs, but can easily be removed from the output.
 }
@@ -55,13 +58,14 @@ isoforms across clusters (see \code{\link{find_shared_genes}}), this
 function tests the significance of the detected co-DIU patterns.
 }
 \details{
-A set of potentially co-DIU genes will have at least two of their
+A set of \strong{potentially co-DIU genes} will have at least two of their
 isoforms assigned to the same clusters, i.e. show detectable
 isoform-level co-expression. However, since clustering allows isoforms
 with slightly variable expression patterns to be clustered together,
 some isoforms might be assigned to clusters that do not faithfully represent their
-expression profile, leading to detection of false-positive co-DIU genes.
-To avoid this, the present function applies a regression model and a statistical
+expression profile, leading to inaccuracies in co-DIU detection.
+To \strong{avoid false-positive co-DIU genes}, the present function
+applies a regression model and a statistical
 test to each of the candidate pair of genes (hereby named
 gene 1 and gene 2), where at least two of the isoforms of each gene must
 belong to the same two clusters (hereby named cluster 1 and cluster 2).
@@ -75,14 +79,14 @@ of the two isoforms of gene 1 must not be different to the average profile of
 the two isoforms of gene 2, indicating that co-expression is only detectable
 when isoform-level expression is considered.
 
-Internally, the function fits a generalized linear regression model (GLM) using
+Internally, the function fits a \strong{generalized linear regression model} (GLM) via
 the \code{\link[stats]{glm}} function, using the \code{\link[MASS]{negative.binomial}}
 function in the \code{MASS} package to set the error distribution and link
 function of the model via the \code{family} argument. To test the
 significance of the \emph{cluster*cell type}
 and \emph{gene*cell type} interactions (as described above), we calculated
-type-II analysis-of-variance (ANOVA) tables for the model using a
-likelihood-ratio chi-square test using the \code{\link[car]{Anova}} function in
+\strong{type-II analysis-of-variance} (ANOVA) tables for the model using a
+\strong{likelihood-ratio chi-square test} using the \code{\link[car]{Anova}} function in
 the \code{car} package (given the unbalanced design).
 }
 \references{
@@ -91,6 +95,6 @@ the \code{car} package (given the unbalanced design).
 \insertRef{Fox2019}{acorde}
 }
 \seealso{
-For details, see internal functions: \code{\link{make_matrix}},
+For details, see internal functions:
 \code{\link{make_design}}, \code{\link{make_test}}.
 }
