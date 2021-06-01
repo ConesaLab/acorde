@@ -88,6 +88,32 @@ check_gene_pair <- function(pair, intersections){
 #' isoforms across clusters (see \code{\link{find_shared_genes}}), this
 #' function tests the significance of the detected co-DIU patterns.
 #'
+#' @param data A data.frame or tibble object including isoforms as rows and cells
+#' as columns. Isoform IDs can be included as row names (data.frame) or as an
+#' additional column (tibble).
+#'
+#' @param cluster_list A list of character vectors containing isoform IDs.
+#' Each element of the list represents a cluster of isoforms.
+#'
+#' @param shared_genes A two-row matrix containing \emph{n} candidate co-DIU
+#' gene pairs as column. Typically the result of running
+#' \code{\link{find_shared_genes}}.
+#'
+#' @param gene_tr_table A data.frame or tibble object containing two columns
+#' named \code{transcript_id} and \code{gene_id}, indicating gene-isoform
+#' correspondence.
+#'
+#' @param id_table  A data frame including two columns named \code{cell}
+#' and \code{cell_type}, in which correspondence between cell ID and cell type
+#' should be provided. The number of rows should be equal to the total number of
+#' cell columns in \code{data}, and the order of the \code{cell} column should
+#' match column (i.e. cell) order in \code{data}.
+#'
+#' @param isoform_col When a tibble is provided in \code{data}, a character
+#' object indicating the name of the column where isoform IDs are specified.
+#' Otherwise, isoform identifiers will be assumed to be defined as rownames,
+#' and this argument will not need to be provided.
+#'
 #' @details A set of potentially co-DIU genes will have at least two of their
 #' isoforms assigned to the same clusters, i.e. show detectable
 #' isoform-level co-expression. However, since clustering allows isoforms
@@ -118,6 +144,16 @@ check_gene_pair <- function(pair, intersections){
 #' likelihood-ratio chi-square test using the \code{\link[car]{Anova}} function in
 #' the \code{car} package (given the unbalanced design).
 #'
+#' @return A list containing one \code{tibble} per tested gene pair. Tibbles will
+#' include two columns: \code{cluster:cell_type} and \code{gene:cell_type},
+#' contain the p-values obtained when testing these interactions.
+#' In some cases the assumptions required for fitting the GLM are not met,
+#' and an \code{NA} value is returned instead. These are output to allow users
+#' to control for untested gene pairs, but can easily be removed from the output.
+#'
+#' @seealso For details, see internal functions: \code{\link{make_matrix}},
+#' \code{\link{make_design}}, \code{\link{make_test}}.
+#'
 #' @references
 #'
 #' \insertRef{Venables2002}{acorde}
@@ -125,14 +161,21 @@ check_gene_pair <- function(pair, intersections){
 #' \insertRef{Fox2019}{acorde}
 #'
 #' @export
-test_shared_genes <- function(data, cluster_list, shared_genes, gene_tr_table, cell_types){
+test_shared_genes <- function(data, cluster_list, shared_genes, gene_tr_table,
+                              id_table, isoform_col = NULL){
 
+  # handle rownames and data type
+  if(is.null(isoform_col) == TRUE){
+    data <- data %>% as.data.frame %>% rownames_to_column("transcript")
+  }
+
+  # create vector to iterate
   pair_seq <- seq(1, ncol(shared_genes))
 
   # run ANOVA test for each gene pair with model fit and test error handling
   pvalues <- future_map(pair_seq,
                         ~tryCatch(make_test(shared_genes[,.],
-                                     data, cluster_list, gene_tr_table, cell_types),
+                                     data, cluster_list, gene_tr_table, id_table$cell_type),
                                   error = function(c){
                                   msg <- conditionMessage(c)
                                   message(paste("Couldn't test pair",
@@ -159,7 +202,6 @@ make_test <- function(pair, data, cluster_list, gene2tr, cell_types){
 
   # perform test
   adev <- car::Anova(fit, type = 2, contrasts=list(topic=stats::contr.sum, sys=stats::contr.sum))
-  # contrasts = list(topic = contr.sum, sys = contr.sum)
   # select p-values
   pvalues <- tibble(adev["cluster:cell_type", "Pr(>Chisq)"], adev["gene:cell_type", "Pr(>Chisq)"])
   colnames(pvalues) <- c("cluster:cell_type", "gene:cell_type")
@@ -189,7 +231,7 @@ make_design <- function(data, cluster_list, gene2tr, cell_types, pair){
 
   # create factor df
       # make data frame with expression of gene pair transcripts
-      fouriso_expr <- data %>% filter(transcript_id %in% tr)
+      fouriso_expr <- data %>% filter(transcript %in% tr)
       fouriso_expr <- fouriso_expr[match(tr, fouriso_expr$transcript_id),]
       # add gene factor
       gene_factor <- factor(rep(seq(nrow(fouriso_expr)/2), 2))

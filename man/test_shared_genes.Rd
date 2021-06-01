@@ -4,7 +4,49 @@
 \alias{test_shared_genes}
 \title{Statistical testing of candidate co-DIU genes}
 \usage{
-test_shared_genes(data, cluster_list, shared_genes, gene_tr_table, cell_types)
+test_shared_genes(
+  data,
+  cluster_list,
+  shared_genes,
+  gene_tr_table,
+  id_table,
+  isoform_col = NULL
+)
+}
+\arguments{
+\item{data}{A data.frame or tibble object including isoforms as rows and cells
+as columns. Isoform IDs can be included as row names (data.frame) or as an
+additional column (tibble).}
+
+\item{cluster_list}{A list of character vectors containing isoform IDs.
+Each element of the list represents a cluster of isoforms.}
+
+\item{shared_genes}{A two-row matrix containing \emph{n} candidate co-DIU
+gene pairs as column. Typically the result of running
+\code{\link{find_shared_genes}}.}
+
+\item{gene_tr_table}{A data.frame or tibble object containing two columns
+named \code{transcript_id} and \code{gene_id}, indicating gene-isoform
+correspondence.}
+
+\item{id_table}{A data frame including two columns named \code{cell}
+and \code{cell_type}, in which correspondence between cell ID and cell type
+should be provided. The number of rows should be equal to the total number of
+cell columns in \code{data}, and the order of the \code{cell} column should
+match column (i.e. cell) order in \code{data}.}
+
+\item{isoform_col}{When a tibble is provided in \code{data}, a character
+object indicating the name of the column where isoform IDs are specified.
+Otherwise, isoform identifiers will be assumed to be defined as rownames,
+and this argument will not need to be provided.}
+}
+\value{
+A list containing one \code{tibble} per tested gene pair. Tibbles will
+include two columns: \code{cluster:cell_type} and \code{gene:cell_type},
+contain the p-values obtained when testing these interactions.
+In some cases the assumptions required for fitting the GLM are not met,
+and an \code{NA} value is returned instead. These are output to allow users
+to control for untested gene pairs, but can easily be removed from the output.
 }
 \description{
 Pairwise statistical testing of co-Differential Isoform Usage
@@ -47,4 +89,8 @@ the \code{car} package (given the unbalanced design).
 \insertRef{Venables2002}{acorde}
 
 \insertRef{Fox2019}{acorde}
+}
+\seealso{
+For details, see internal functions: \code{\link{make_matrix}},
+\code{\link{make_design}}, \code{\link{make_test}}.
 }
