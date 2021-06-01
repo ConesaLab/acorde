@@ -1,18 +1,46 @@
-##### FUNCTION TO SCALE DATA #####
+#' @import purrr
+#' @import dplyr
+#' @import tibble
+#' @import ggplot2
 
+#' @title Scale single-cell expression data for cluster visualization
+#'
+#' @description This function performs \strong{range scaling} on isoform-level
+#' single-cell counts to assist visualization of isoform clusters obtained with
+#' \code{acorde}
+#'
+#' @param data A data.frame or tibble including isoforms as rows and cells
+#' as columns. Isoform IDs can be included as row names (data.frame) or as an
+#' additional column (tibble).
+#'
+#' @param isoform_col When a tibble is provided in \code{data}, a character
+#' object indicating the name of the column where isoform IDs are specified.
+#' Otherwise, isoform identifiers will be assumed to be defined as rownames,
+#' and this argument will not need to be provided.
+#'
+#' @details The purpose of scaling is to be able to jointly visualize isoform
+#' expression trends for all members of a cluster, independently of each isoform's
+#' absolute expression level.
+#'
+#' For each isoform, counts are first \strong{centered} by substracting the isoform mean
+#' across all cell types. Then, the \strong{expression range} is computed as the difference
+#' between the maximum and minimum count values of the isoform. Of note, this
+#' range is often equivalent to the maximum counts, since most isoforms show
+#' minimum count values of zero. \strong{Scaled} counts are then computed by diving centered
+#' counts by the expression range.
+#'
+#' @return A data.frame containing the scaled counts, with cell IDs as column
+#' names and isoform IDs as row names.
+#'
 #' @export
-scale_range <- function(data){
+scale_range <- function(data, isoform_col = NULL){
 
   # handle rownames
-  id <- str_detect(colnames(data), "transcript")
-
-  if(sum(id) == 1){
-
-    name_id <- colnames(data[,which(id)])
-    data <- column_to_rownames(data, var = name_id)
+  if(is.null(isoform_col) == FALSE){
+    data <- column_to_rownames(data, isoform_col)
   }
 
-  # scale transript expression
+  # scale trancsript expression
   tr_center <- apply(data, 1, mean)
 
   tr_max <- apply(data, 1, max)
