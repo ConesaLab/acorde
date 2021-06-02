@@ -54,10 +54,9 @@ scale_range <- function(data, isoform_col = NULL){
 
 
 
-##### FUNCTION TO PLOT CLUSTER #####
-
+##### FUNCTION TO COMPUTE CELL TYPE MEAN AND ERROR FOR ALL ISOFORMS IN CLUSTER #####
 #' @export
-plot_avg_expr <- function(data, tr_names, cell_types, plot_title = NULL, return = FALSE,
+calculate_cluster_ctmeans <- function(data, tr_names, cell_types, plot_title = NULL, return = FALSE,
                           labels = NULL){
 
   # handle rownames
@@ -81,35 +80,40 @@ plot_avg_expr <- function(data, tr_names, cell_types, plot_title = NULL, return 
   errors <- map(errors, rownames_to_column) %>% bind_rows
   # add standard error column to means object
   means <- mutate(means, error = errors$.)
+
+  # return means
+  return(means)
+}
+
+#### PLOT ALL ISOFORMS IN CLUSTER USING CT MEAN EXPRESSION ####
+
+plot_cluster_ctmeans <- function(data, plot_title = NULL, ct_labels = NULL){
+
   # format cell type factor
-  if(is.null(labels) == FALSE){
-    means$cell_type <- factor(means$cell_type,
-                              levels = unique(means$cell_type) %>% sort(), labels = labels)
-  } else if(is.null(labels) == TRUE){
-    means$cell_type <- factor(means$cell_type,
-                              levels = unique(means$cell_type) %>% sort())
+  if(is.null(ct_labels) == FALSE){
+    data$cell_type <- factor(data$cell_type,
+                              levels = unique(data$cell_type) %>% sort(), labels = ct_labels)
+  } else if(is.null(ct_labels) == TRUE){
+    data$cell_type <- factor(data$cell_type,
+                              levels = unique(data$cell_type) %>% sort())
   }
 
+  # plot
+  p <- ggplot(data, aes(x = cell_type, y = expression, colour = transcript_id,
+                        group = transcript_id)) +
+    ggtitle(plot_title) +
+    geom_line() + geom_point() +
+    geom_errorbar(aes(ymin = expression - error, ymax = expression + error), width = 0.1) +
+    ylab("Mean expression (scaled)") + xlab("Cell type") +
+    theme(legend.title = element_blank(), legend.position = "none")
 
-  # return means or plot
-  if(return == TRUE){
-    return(means)
-
-  } else {
-    ggplot(means, aes(x = cell_type, y = expression, colour = transcript_id, group = transcript_id)) +
-      ggtitle(plot_title) +
-      geom_line() + geom_point() +
-      geom_errorbar(aes(ymin = expression - error, ymax = expression + error), width = 0.1) +
-      ylab("Mean expression (scaled)") + xlab("Cell type") +
-      theme(legend.title = element_blank(), legend.position = "none")
-  }
+  return(p)
 }
 
 
 ##### FUNCTION TO CALCULATE CLUSTER MEAN PROFILE #####
-
 #' @export
-calc_avg_profile <- function(data, tr_names, cell_types, plot_title = NULL, return = FALSE){
+calculate_cluster_profile <- function(data, tr_names, cell_types, plot_title = NULL, return = FALSE){
 
   # handle rownames
   id <- str_detect(colnames(data), "transcript")
@@ -130,24 +134,38 @@ calc_avg_profile <- function(data, tr_names, cell_types, plot_title = NULL, retu
   # format mean profile as data frame
   avg_sil <- tibble(tr = rep("silhouette", length(nrow(clust_avg))),
                     mean = avg$x, sd = sd$x, cell_type = avg$Group.1)
-  # format cell type factor
-  #avg_sil$cell_type <- factor(avg_sil$cell_type,
-  #                         levels = unique(avg_sil$cell_type) %>% sort(),
-  #                           labels = c("Astr", "End", "GABA", "Glut", "Micr", "Oligo", "OPC"))
 
-  if(return == TRUE){
-    return(avg_sil)
-  } else {
-    # plot all transcripts + mean profile
-    avg_all <- plot_avg_expr(data, clust, cell_types, return = TRUE)
-    avg <- bind_rows(avg_all, avg_sil)
-    avg <- avg %>% mutate(category = factor(c(rep("tr", nrow(avg_all)), rep("sil", nrow(avg_sil))),
-                                            levels = c("tr", "sil"),
-                                            labels = c("Transcript", "Mean profile")))
-    ggplot(avg, aes(x = cell_type, y = value, colour = category, group = transcript)) + geom_line() + geom_point() +
-      # geom_errorbar(aes(ymin = value - error, ymax = value + error), width = 0.1) +
-      ylab("Mean expression (scaled)") + xlab("Cell type") + theme(legend.title = element_blank()) +
-      scale_color_manual(values = c("grey", "black"))
+  # return mean profile
+  return(avg_sil)
+}
+
+
+
+#### PLOT CLUSTER MEAN PROFILE ####
+#' @export
+plot_cluster_profile <- function(data, plot_title = NULL, ct_labels = NULL){
+
+  # format cell type factor
+  if(is.null(ct_labels) == FALSE){
+    data$cell_type <- factor(data$cell_type,
+                             levels = unique(data$cell_type) %>% sort(), labels = ct_labels)
+  } else if(is.null(ct_labels) == TRUE){
+    data$cell_type <- factor(data$cell_type,
+                             levels = unique(data$cell_type) %>% sort())
   }
 
+  # add upper and lower columns for plotting ribbon
+  data <- data %>% mutate(upper = mean+sd, lower = mean-sd)
+
+  # plot
+  p <- ggplot(data) + ggtitle(plot_title) +
+    geom_ribbon(aes(x = cell_type, ymax = upper, ymin = lower, group = 1),
+                fill = "gray80") +
+    geom_line(aes(x = cell_type, y = mean, group = 1),
+              size = 1.5, color = "red3") +
+    xlab("Cell type") + ylab("Scaled counts") +
+    theme(axis.text.x = element_text(angle = 90))
+
+  return(p)
 }
+
