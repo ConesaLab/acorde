@@ -2,7 +2,7 @@
 % Please edit documentation in R/cluster_visualization.R
 \name{plot_cluster_ctmeans}
 \alias{plot_cluster_ctmeans}
-\title{Plot cell type expression of all isoforms in cluster}
+\title{Plot cell type expression of all isoforms in a cluster}
 \usage{
 plot_cluster_ctmeans(data, plot_title = NULL, ct_labels = NULL)
 }
