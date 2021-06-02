@@ -86,7 +86,7 @@ calculate_cluster_ctmeans <- function(data, tr_names, cell_types, plot_title = N
 }
 
 #### PLOT ALL ISOFORMS IN CLUSTER USING CT MEAN EXPRESSION ####
-
+#' @export
 plot_cluster_ctmeans <- function(data, plot_title = NULL, ct_labels = NULL){
 
   # format cell type factor
