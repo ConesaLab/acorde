@@ -305,16 +305,16 @@ expand_clusters <- function(data, isoform_col = NULL, id_table,
 
 #### FUNCTION TO FILTER CLUSTERS BY DS AND SPLICING COORDINATION #####
 
-#' @title
+#' @title Keep isoforms from genes with Differential Isoform Usage
 #'
 #' @export
-filter_coDIU <- function(cluster_list, gene_tr_table){
+keep_DIU <- function(cluster_list, gene_tr_table){
 
   message(paste("Total no. of clusters:", length(cluster_list), sep = " "))
   message(paste("Total isoforms in clusters:",
                 unlist(cluster_list) %>% length), sep = " ")
 
-  # filter out transcripts from genes with only one isoform left
+  ### 1. Filter out transcripts from genes with only one isoform left
 
   # list of all clustered transcripts
   clustered_tr <- unlist(cluster_list) %>% unname
@@ -334,7 +334,9 @@ filter_coDIU <- function(cluster_list, gene_tr_table){
   message(paste("Isoforms clustered after coordination filter:",
                 unlist(clusters_multi) %>% length, sep = " "))
 
-  # filter out transcripts from genes with all isoforms in same cluster
+
+  ### 2. Filter out transcripts from genes with all isoforms in same cluster,
+  ### i.e. keep only isoforms from DIU genes
 
   # convert clusters to gene IDs
   clusters_multi.gene <- map(clusters_multi,
@@ -347,15 +349,16 @@ filter_coDIU <- function(cluster_list, gene_tr_table){
   colnames(gene_distribution) <- names(gmulti)
   gene_distribution <- colSums(gene_distribution)
 
-  # find differentially spliced genes (i.e. isoforms in more than one cluster)
-  genes_ds <- gene_distribution[gene_distribution > 1]
+  # find differential isoform usage (DIU) genes,
+  # i.e. genes with isoforms in more than one cluster
+  genes_diu <- gene_distribution[gene_distribution > 1]
 
-  # filter clusters to only keep transcripts from ds genes
-  tr_ds.idx <- map(clusters_multi.gene, ~(which(. %in% names(genes_ds))))
-  clusters_ds <- map2(clusters_multi, tr_ds.idx, ~(.x[.y]))
+  # filter clusters to only keep transcripts from DIU genes
+  tr_ds.idx <- map(clusters_multi.gene, ~(which(. %in% names(genes_diu))))
+  clusters_diu <- map2(clusters_multi, tr_ds.idx, ~(.x[.y]))
 
   message(paste("Isoforms clustered after differential splicing filter:",
-                unlist(clusters_ds) %>% length, sep = " "))
+                unlist(clusters_diu) %>% length, sep = " "))
 
-  return(clusters_ds)
+  return(clusters_diu)
 }
