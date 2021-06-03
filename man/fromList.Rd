@@ -18,14 +18,15 @@ present or absent from the group, respectively.
 \description{
 Modified version of \code{\link[UpSetR]{fromList}}
 (\code{UpSetR} package). Transforms a list of named vectors to a data frame
-compatible with the \code{\link[UpSetR]{UpSet}} function.
+compatible with the \code{\link[UpSetR]{upset}} function.
 }
 \references{
-The \code{fromList()} function is originally included in the \code{UpSetR} package:
+The \code{fromList()} function is originally included in the
+\code{\link[UpSetR:fromList]{UpSetR}} package:
 
 \insertRef{Conway2017}{acorde}
 
 The present modifications to the fromList() function were obtained from
-user @docmanny's contribution in this GitHub issue:
-\link{https://github.com/hms-dbmi/UpSetR/issues/85#issuecomment-327900647}
+user @docmanny's contribution in this
+\href{https://github.com/hms-dbmi/UpSetR/issues/85#issuecomment-327900647}{GitHub issue}.
 }
