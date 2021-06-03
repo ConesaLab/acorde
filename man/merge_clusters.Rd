@@ -59,6 +59,16 @@ merge clusters into. Supplied to \code{\link[stats]{cutree}} via the
 \item{...}{Additional arguments passed to \code{\link[dynamicTreeCut]{cutreeHybrid}}
 (only when \code{dynamic = TRUE}).}
 }
+\value{
+A named list containing two elements:
+
+\enumerate{
+   \item \code{merged_groups}: a list detailing merge decisions, in which
+   each element contains the identifiers of the clusters that were merged together.
+   \item \code{clusters}: a list of character vectors, containing the
+   identifiers of isoforms included in each of the resulting clusters.
+}
+}
 \description{
 Join clusters representing the same expression
 pattern across cell types (redundant clusters). This function uses a

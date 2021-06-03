@@ -165,6 +165,15 @@ cluster_isoforms <- function(cor_matrix, deepSplit = 3, pamStage = FALSE,
 #' remain unmerged if no redundancies with the profiles of other clusters are
 #' found.
 #'
+#' @return A named list containing two elements:
+#'
+#' \enumerate{
+#'    \item \code{merged_groups}: a list detailing merge decisions, in which
+#'    each element contains the identifiers of the clusters that were merged together.
+#'    \item \code{clusters}: a list of character vectors, containing the
+#'    identifiers of isoforms included in each of the resulting clusters.
+#' }
+#'
 #' @references
 #' \insertRef{Langfelder2008}{acorde}
 #'
