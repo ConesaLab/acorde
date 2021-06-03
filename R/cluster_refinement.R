@@ -205,7 +205,7 @@ expand_clusters <- function(data, isoform_col = NULL, id_table,
     percentiles <- percentile_expr(data, id_table, percentile_no = percentile_no,
                                    isoform_col = isoform_col)
 
-    # metatranscripts of clusters: compute mean-summarized percentile expression per transcript
+    # metatranscripts of clusters: compute mean-summarized percentile expression
     metatranscripts <- map(cluster_list,
                            ~(percentiles[,.] %>% as_tibble %>% rowMeans %>%
                                enframe(value = "mean_percentile")))
@@ -223,11 +223,15 @@ expand_clusters <- function(data, isoform_col = NULL, id_table,
 
     # get metatranscripts (mean expression of clusters)
     metatr.df <- map(cluster_list,
-                     ~(filter(data, transcript_id %in% .) %>% column_to_rownames("transcript_id") %>%
-                         colMeans %>% enframe(value = "cluster_mean", name = NULL))) %>% bind_cols
+                     ~(filter(data, transcript_id %in% .) %>%
+                         column_to_rownames("transcript_id") %>%
+                         colMeans %>%
+                         enframe(value = "cluster_mean", name = NULL))) %>%
+      bind_cols
 
     # compute correlation of unclustered with metatranscripts
-    unclust_expr <- data %>% filter(transcript_id %in% unclustered) %>% column_to_rownames("transcript_id") %>%
+    unclust_expr <- data %>% filter(transcript_id %in% unclustered) %>%
+      column_to_rownames("transcript_id") %>%
       as.matrix %>% t() %>% as.data.frame
 
     if(method == "rho"){
@@ -253,7 +257,10 @@ expand_clusters <- function(data, isoform_col = NULL, id_table,
   # evaluate force_expand and leave unclustered if correlations are too low
   if(force_expand == FALSE){
     highcor <- apply(unclust_cor, 1, function(x) sum(x >= expand_threshold))
-    if(sum(highcor) == 0) stop("No correlations above threshold found for unclustered features.")
+
+    if(sum(highcor) == 0)
+      stop("No correlations above threshold found for unclustered features.")
+
     # filter correlation matrix to remove isoforms with no high correlation
     unclust_cor <- unclust_cor[names(highcor[highcor >= 1]),]
     # new unclustered group
@@ -265,7 +272,8 @@ expand_clusters <- function(data, isoform_col = NULL, id_table,
   assign_unclust <- apply(unclust_cor, 1, which.max) %>% split(names(.), .)
 
   # skip clusters with no assigned unclustered transcripts
-  skip <- which(!(seq(1,length(cluster_list)) %in% (names(assign_unclust) %>% as.integer)))
+  skip <- which(!(seq(1,length(cluster_list)) %in%
+                    (names(assign_unclust) %>% as.integer)))
 
   # assign unclustered
   if(length(skip) == 0){
@@ -297,18 +305,23 @@ expand_clusters <- function(data, isoform_col = NULL, id_table,
 
 #### FUNCTION TO FILTER CLUSTERS BY DS AND SPLICING COORDINATION #####
 
+#' @title
+#'
 #' @export
 filter_coDIU <- function(cluster_list, gene_tr_table){
 
   message(paste("Total no. of clusters:", length(cluster_list), sep = " "))
-  message(paste("Total isoforms in clusters:", unlist(cluster_list) %>% length), sep = " ")
+  message(paste("Total isoforms in clusters:",
+                unlist(cluster_list) %>% length), sep = " ")
 
   # filter out transcripts from genes with only one isoform left
 
   # list of all clustered transcripts
   clustered_tr <- unlist(cluster_list) %>% unname
   # split/group transcripts by gene IDs
-  clustered_g <- split(clustered_tr, gene_tr_table[match(clustered_tr, gene_tr_table$transcript_id),]$gene_id)
+  clustered_g <- split(clustered_tr,
+                       gene_tr_table[match(clustered_tr,
+                                           gene_tr_table$transcript_id),]$gene_id)
   # count no. of transcripts per gene in the clusters
   ntr <- map_int(clustered_g, length)
   # find genes with > 1 isoform clustered
@@ -318,17 +331,22 @@ filter_coDIU <- function(cluster_list, gene_tr_table){
   # filter clusters to keep only transcripts with multiple same-gene transcripts
   clusters_multi <- map(cluster_list, ~(.[. %in% multi_tr]))
 
-  message(paste("Isoforms clustered after coordination filter:", unlist(clusters_multi) %>% length, sep = " "))
+  message(paste("Isoforms clustered after coordination filter:",
+                unlist(clusters_multi) %>% length, sep = " "))
 
   # filter out transcripts from genes with all isoforms in same cluster
 
   # convert clusters to gene IDs
-  clusters_multi.gene <- map(clusters_multi, ~(gene_tr_table[match(., gene_tr_table$transcript_id),]$gene_id))
+  clusters_multi.gene <- map(clusters_multi,
+                             ~(gene_tr_table[match(.,
+                                                   gene_tr_table$transcript_id),]$gene_id))
 
   # find no. of clusters where each gene has isoforms
-  gene_distribution <- map(clusters_multi.gene, ~(names(gmulti) %in% .)) %>% bind_rows %>% t
+  gene_distribution <- map(clusters_multi.gene, ~(names(gmulti) %in% .)) %>%
+    bind_rows %>% t
   colnames(gene_distribution) <- names(gmulti)
   gene_distribution <- colSums(gene_distribution)
+
   # find differentially spliced genes (i.e. isoforms in more than one cluster)
   genes_ds <- gene_distribution[gene_distribution > 1]
 
@@ -336,7 +354,8 @@ filter_coDIU <- function(cluster_list, gene_tr_table){
   tr_ds.idx <- map(clusters_multi.gene, ~(which(. %in% names(genes_ds))))
   clusters_ds <- map2(clusters_multi, tr_ds.idx, ~(.x[.y]))
 
-  message(paste("Isoforms clustered after differential splicing filter:", unlist(clusters_ds) %>% length, sep = " "))
+  message(paste("Isoforms clustered after differential splicing filter:",
+                unlist(clusters_ds) %>% length, sep = " "))
 
   return(clusters_ds)
 }
