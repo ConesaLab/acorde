@@ -1,7 +1,6 @@
 #' @import dplyr
 #' @import purrr
 #' @import tibble
-#' @import readr
 
 
 
@@ -12,7 +11,7 @@
 # length filter eliminates small clusters and moves members to unclustered list supplied/created
 
 #' @export
-filter_clusterQC <- function(cluster_list, cor_matrix,
+filter_clusters <- function(cluster_list, cor_matrix,
                              min_cor = 0.8, lowcor_threshold = 3,
                              contains_unclustered = TRUE,
                              length_filter = TRUE, length_threshold = 3){
@@ -99,7 +98,7 @@ expand_clusters <- function(data, isoform_col = NULL, id_table,
 
   }else if(method != "percentile"){
 
-    if(str_detect(colnames(data), "transcript") %>% sum == 0){
+    if(is.null(isoform_col = TRUE)){
       data <- data %>% as.data.frame %>% rownames_to_column("transcript_id")
     }
 
@@ -180,7 +179,7 @@ expand_clusters <- function(data, isoform_col = NULL, id_table,
 #### FUNCTION TO FILTER CLUSTERS BY DS AND SPLICING COORDINATION #####
 
 #' @export
-filter_coDS <- function(cluster_list, gene_tr_table){
+filter_coDIU <- function(cluster_list, gene_tr_table){
 
   message(paste("Total no. of clusters:", length(cluster_list), sep = " "))
   message(paste("Total isoforms in clusters:", unlist(cluster_list) %>% length), sep = " ")
