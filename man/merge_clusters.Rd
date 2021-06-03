@@ -6,8 +6,9 @@
 \usage{
 merge_clusters(
   data,
-  cluster_list,
+  isoform_col = NULL,
   id_table,
+  cluster_list,
   percentile_no = 10,
   dynamic = FALSE,
   method = c("percentile", "pearson", "spearman", "rho", "zi_kendall"),
@@ -21,14 +22,17 @@ merge_clusters(
 cells as columns. Isoform IDs can be included as row names (data.frame)
 or as an additional column (tibble).}
 
-\item{cluster_list}{A list of character vectors, each containing the
-identifiers of the isoforms in a cluster.}
+\item{isoform_col}{When a tibble is provided in \code{data}, a character value
+indicating the name of the column in which isoform IDs are specified.}
 
 \item{id_table}{A data frame including two columns named \code{cell} and
 \code{cell_type}, in which correspondence between cell ID and cell type should be
 provided. The number of rows should be equal to the total number of
 cell columns in \code{data}, and the order of the \code{cell} column should
 match column (i.e. cell) order in \code{data}.}
+
+\item{cluster_list}{A list of character vectors, each containing the
+identifiers of the isoforms in a cluster.}
 
 \item{percentile_no}{Integer indicating the number of percentiles that will
 be used to summarized cell type expression via \code{\link{percentile_expr}}.

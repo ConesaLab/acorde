@@ -1,8 +1,6 @@
 #' @import dplyr
 #' @import purrr
 #' @import tibble
-#' @import ggplot2
-
 
 
 #' @title Initial clustering of isoforms using dynamicTreeCut
@@ -87,14 +85,17 @@ cluster_isoforms <- function(cor_matrix, deepSplit = 3, pamStage = FALSE,
 #' cells as columns. Isoform IDs can be included as row names (data.frame)
 #' or as an additional column (tibble).
 #'
-#' @param cluster_list A list of character vectors, each containing the
-#' identifiers of the isoforms in a cluster.
+#' @param isoform_col When a tibble is provided in \code{data}, a character value
+#' indicating the name of the column in which isoform IDs are specified.
 #'
 #' @param id_table A data frame including two columns named \code{cell} and
 #' \code{cell_type}, in which correspondence between cell ID and cell type should be
 #' provided. The number of rows should be equal to the total number of
 #' cell columns in \code{data}, and the order of the \code{cell} column should
 #' match column (i.e. cell) order in \code{data}.
+#'
+#' @param cluster_list A list of character vectors, each containing the
+#' identifiers of the isoforms in a cluster.
 #'
 #' @param percentile_no Integer indicating the number of percentiles that will
 #' be used to summarized cell type expression via \code{\link{percentile_expr}}.
@@ -172,7 +173,8 @@ cluster_isoforms <- function(cor_matrix, deepSplit = 3, pamStage = FALSE,
 #' \insertRef{Skinnider2019}{acorde}
 #'
 #' @export
-merge_clusters <- function(data, cluster_list, id_table,
+merge_clusters <- function(data, isoform_col = NULL, id_table,
+                           cluster_list,
                            percentile_no = 10,
                            dynamic = FALSE,
                            method = c("percentile", "pearson", "spearman",
@@ -183,7 +185,8 @@ merge_clusters <- function(data, cluster_list, id_table,
   if(method == "percentile"){
 
     # get percentile expression
-    percentiles <- percentile_expr(data, ids_to_type, percentile_no = percentile_no)
+    percentiles <- percentile_expr(data, ids_to_type, percentile_no = percentile_no,
+                                   isoform_col = isoform_col)
 
     # metatranscripts of clusters: compute mean-summarized percentile expression per transcript
     metatranscripts <- map(cluster_list,
