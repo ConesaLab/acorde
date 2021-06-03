@@ -48,6 +48,10 @@
 #' @return A list of generated clusters, that is, of character vectors including
 #' the identifiers of isoforms assigned to each of the clusters.
 #'
+#' \strong{Note:} if \code{PAM = FALSE}, the first element of the list will
+#' correspond to \emph{"cluster zero"}, i.e. a group containing isoforms that
+#' were not assigned to any of the clusters.
+#'
 #' @references
 #' \insertRef{Langfelder2008}{acorde}
 #'
