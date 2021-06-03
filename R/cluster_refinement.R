@@ -125,6 +125,9 @@ single_cluster_filter <- function(cluster,
 #' @param cluster_list A list of character vectors, each containing the
 #' identifiers of the isoforms in a cluster.
 #'
+#' @param unclustered A character vector containing the identifiers of
+#' unclustered isoforms.
+#'
 #' @param percentile_no Integer indicating the number of percentiles that will
 #' be used to summarized cell type expression via \code{\link{percentile_expr}}.
 #' Should always be higher than 4 (quantiles) and lower than 100 (percentiles).
