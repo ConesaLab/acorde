@@ -1,14 +1,9 @@
-#### FUNCTION TO FILTER ONE CLUSTER AND GET A CLEANER SIGNAL ####
-single_cluster_filter <- function(cluster, cor_matrix, min_cor, lowcor_threshold){
+#' @import dplyr
+#' @import purrr
+#' @import tibble
+#' @import readr
 
-  # select correlations for transcripts in cluster
-  clust_cors <- cor_matrix[cluster, cluster] %>% as_tibble
-  # count no. of low correlations
-  tr_filt <- map_lgl(clust_cors, ~(sum(. < min_cor) < lowcor_threshold))
-  # filter the cluster
-  filtered_cluster <- cluster[tr_filt]
-  return(filtered_cluster)
-}
+
 
 #### FUNCTION TO QC FILTER ALL CLUSTERS AT ONCE BY THE SPECIFIED PARAMETERS ####
 # main filtering function that calls single_cluster_filter()
@@ -17,8 +12,10 @@ single_cluster_filter <- function(cluster, cor_matrix, min_cor, lowcor_threshold
 # length filter eliminates small clusters and moves members to unclustered list supplied/created
 
 #' @export
-filter_clusterQC <- function(cluster_list, cor_matrix, min_cor = 0.8, lowcor_threshold = 3,
-                             contains_unclustered = TRUE, length_filter = TRUE, length_threshold = 3){
+filter_clusterQC <- function(cluster_list, cor_matrix,
+                             min_cor = 0.8, lowcor_threshold = 3,
+                             contains_unclustered = TRUE,
+                             length_filter = TRUE, length_threshold = 3){
 
   # if unclustered transcripts are contained in cluster_list, handle
   if(contains_unclustered == TRUE){
@@ -57,10 +54,26 @@ filter_clusterQC <- function(cluster_list, cor_matrix, min_cor = 0.8, lowcor_thr
 }
 
 
+
+#### FUNCTION TO FILTER ONE CLUSTER AND GET A CLEANER SIGNAL ####
+single_cluster_filter <- function(cluster, cor_matrix, min_cor, lowcor_threshold){
+
+  # select correlations for transcripts in cluster
+  clust_cors <- cor_matrix[cluster, cluster] %>% as_tibble
+  # count no. of low correlations
+  tr_filt <- map_lgl(clust_cors, ~(sum(. < min_cor) < lowcor_threshold))
+  # filter the cluster
+  filtered_cluster <- cluster[tr_filt]
+  return(filtered_cluster)
+}
+
+
+
 ##### FUNCTION TO JOIN UNCLUSTERED TRANSCRIPTS TO A SET OF EXTANT CLUSTERS: EXPAND #####
 
 #' @export
-expand_clusters <- function(data, cluster_list, unclustered, ids_to_type,
+expand_clusters <- function(data, isoform_col = NULL, id_table,
+                            cluster_list, unclustered,
                             force_expand = TRUE, expand_threshold = NULL,
                             method = c("percentile", "pearson", "spearman",
                                        "rho", "zi_kendall"),
@@ -71,7 +84,8 @@ expand_clusters <- function(data, cluster_list, unclustered, ids_to_type,
   if(method == "percentile"){
 
     # get percentile expression
-    percentiles <- percentile_expr(data, ids_to_type, percentile_no = percentile_no)
+    percentiles <- percentile_expr(data, id_table, percentile_no = percentile_no,
+                                   isoform_col = isoform_col)
 
     # metatranscripts of clusters: compute mean-summarized percentile expression per transcript
     metatranscripts <- map(cluster_list,
@@ -166,7 +180,7 @@ expand_clusters <- function(data, cluster_list, unclustered, ids_to_type,
 #### FUNCTION TO FILTER CLUSTERS BY DS AND SPLICING COORDINATION #####
 
 #' @export
-filter_coDS <- function(cluster_list, gene2tr){
+filter_coDS <- function(cluster_list, gene_tr_table){
 
   message(paste("Total no. of clusters:", length(cluster_list), sep = " "))
   message(paste("Total isoforms in clusters:", unlist(cluster_list) %>% length), sep = " ")
@@ -176,7 +190,7 @@ filter_coDS <- function(cluster_list, gene2tr){
   # list of all clustered transcripts
   clustered_tr <- unlist(cluster_list) %>% unname
   # split/group transcripts by gene IDs
-  clustered_g <- split(clustered_tr, gene2tr[match(clustered_tr, gene2tr$transcript_id),]$gene_id)
+  clustered_g <- split(clustered_tr, gene_tr_table[match(clustered_tr, gene_tr_table$transcript_id),]$gene_id)
   # count no. of transcripts per gene in the clusters
   ntr <- map_int(clustered_g, length)
   # find genes with > 1 isoform clustered
@@ -191,7 +205,7 @@ filter_coDS <- function(cluster_list, gene2tr){
   # filter out transcripts from genes with all isoforms in same cluster
 
   # convert clusters to gene IDs
-  clusters_multi.gene <- map(clusters_multi, ~(gene2tr[match(., gene2tr$transcript_id),]$gene_id))
+  clusters_multi.gene <- map(clusters_multi, ~(gene_tr_table[match(., gene_tr_table$transcript_id),]$gene_id))
 
   # find no. of clusters where each gene has isoforms
   gene_distribution <- map(clusters_multi.gene, ~(names(gmulti) %in% .)) %>% bind_rows %>% t
