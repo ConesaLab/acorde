@@ -4,17 +4,46 @@
 
 
 
-#### FUNCTION TO QC FILTER ALL CLUSTERS AT ONCE BY THE SPECIFIED PARAMETERS ####
-# main filtering function that calls single_cluster_filter()
-# specified correlation value (min_cor) must be satisifed for each isoform vs all in the cluster
-# allowing lowcor_threshold exceptions in the rule
-# length filter eliminates small clusters and moves members to unclustered list supplied/created
-
+#' @title Remove isoforms with low correlation from clusters
+#'
+#' @description Refine the expression signal of a set of isoform clusters
+#' by removing elements with low correlations with the rest of isoforms in the
+#' cluster.
+#'
+#' @param cluster_list A list of character vectors, each containing the
+#' identifiers of the isoforms in a cluster.
+#'
+#' @param contains_unclustered A logical, indicating whether the first element
+#' in \code{cluster_list} corresponds to unassigned isoforms
+#' (i.e. unclustered, see \code{\link{cluster_isoforms}}).
+#'
+#' @param cor_matrix A matrix including co-expression values (e.g.
+#' correlations) between isoforms, where column and row names indicate isoform
+#' IDs.
+#'
+#' @param min_cor A numeric value indicating the minimum correlation
+#' (or co-expression value) allowed between isoforms of the same cluster.
+#'
+#' @param lowcor_threshold An integer indicating the number of correlation values
+#' below \code{min_cor} allowed per isoform in the cluster. As a result, any
+#' isoform with \code{correlation < min_cor} with \code{>= lowcor_threshold}
+#' counterparts will be moved to the unclustered group.
+#'
+#' @param size_filter A logical indicating whether size filter of the correlation-filtered
+#' filtered clusters should be performed.
+#' Size filter removes clusters that contain too few elements after filtering
+#' and moves their isoforms to the unclustered group.
+#'
+#' @param size_threshold An integer value indicating the minimum number of
+#' isoforms required to preserve the cluster during size filtering.
+#'
+#' @return A list of clusters, where the first element will correspond to
+#' unclustered isoforms and the rest to the correlation-filtered clusters.
+#'
 #' @export
-filter_clusters <- function(cluster_list, cor_matrix,
-                             min_cor = 0.8, lowcor_threshold = 3,
-                             contains_unclustered = TRUE,
-                             length_filter = TRUE, length_threshold = 3){
+filter_clusters <- function(cluster_list, contains_unclustered = TRUE,
+                            cor_matrix, min_cor = 0.8, lowcor_threshold = 3,
+                             size_filter = TRUE, size_threshold = 3){
 
   # if unclustered transcripts are contained in cluster_list, handle
   if(contains_unclustered == TRUE){
@@ -39,12 +68,13 @@ filter_clusters <- function(cluster_list, cor_matrix,
   }
 
   # filter out small clusters (by threshold) and move to unclustered
-  if(length_filter == TRUE){
+  if(size_filter == TRUE){
     unclustered <- c(unclustered,
-                     filtered_list[map_int(filtered_list, length) <= length_threshold] %>% unlist) %>% unlist
+                     filtered_list[map_int(filtered_list, length) <= size_threshold] %>%
+                       unlist) %>% unlist
     unclustered <- list("0" = unclustered)
 
-    filtered_list <- filtered_list[map_int(filtered_list, length) > length_threshold]
+    filtered_list <- filtered_list[map_int(filtered_list, length) > size_threshold]
     names(filtered_list) <- seq(1, length(filtered_list))
   }
 
@@ -54,8 +84,14 @@ filter_clusters <- function(cluster_list, cor_matrix,
 
 
 
-#### FUNCTION TO FILTER ONE CLUSTER AND GET A CLEANER SIGNAL ####
-single_cluster_filter <- function(cluster, cor_matrix, min_cor, lowcor_threshold){
+#' @describeIn filter_clusters applies the filtering parameters defined in
+#' \code{filter_clusters} to one cluster. This function is called internally and
+#' used to iterate and filter all clusters supplied via the \code{cluster_list}
+#' argument.
+single_cluster_filter <- function(cluster,
+                                  cor_matrix,
+                                  min_cor,
+                                  lowcor_threshold){
 
   # select correlations for transcripts in cluster
   clust_cors <- cor_matrix[cluster, cluster] %>% as_tibble
