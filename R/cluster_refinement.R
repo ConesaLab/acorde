@@ -305,7 +305,31 @@ expand_clusters <- function(data, isoform_col = NULL, id_table,
 
 #### FUNCTION TO FILTER CLUSTERS BY DS AND SPLICING COORDINATION #####
 
-#' @title Keep isoforms from genes with Differential Isoform Usage
+#' @title Keep isoforms from genes with Differential Isoform Usage (DIU)
+#'
+#' @description Perform detection of genes with Differential Isoform Usage
+#' across clusters and remove isoforms from non-DIU genes.
+#'
+#' @param cluster_list A list of character vectors, each containing the
+#' identifiers of the isoforms in a cluster.
+#'
+#' @param gene_tr_table A data.frame or tibble object containing two columns
+#' named \code{transcript_id} and \code{gene_id}, indicating gene-isoform
+#' correspondence.
+#'
+#' @details In single-cell RNA-Seq data, we consider \strong{Differential Isoform Usage}
+#' (DIU) to occur when a gene shows changes in alternative isoform expression
+#' across cell types. For this to be possible, the first condition for a gene to
+#' be DIU is to first have at least two clustered isoforms. Accordingly,
+#' the function first removes all isoforms from genes that have a single isoform
+#' remaining in the clusters. To be positive for DIU, however, a gene must have
+#' at least two of its isoforms assigned to different clusters indicating that
+#' there is a change in isoform expression across cell types. Therefore, \code{keep_DIU}
+#' removes all isoforms that do not have at least one same-gene counterpart in
+#' another cluster, and that therefore do not belong to DIU genes.
+#'
+#' @return A list of character vectors, where each element corresponds to one
+#' cluster and contains the identifiers of the isoforms assigned to that cluster.
 #'
 #' @export
 keep_DIU <- function(cluster_list, gene_tr_table){
