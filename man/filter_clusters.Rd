@@ -44,6 +44,11 @@ and moves their isoforms to the unclustered group.}
 
 \item{size_threshold}{An integer value indicating the minimum number of
 isoforms required to preserve the cluster during size filtering.}
+
+\item{cluster}{In \code{single_cluster_filter}, a character vector including
+the identifiers of the isoforms in a cluster. The function is called internally,
+so users will not need to supply this argument (it will be sequentially obtained
+from \code{cluster_list} to perform the different iterations of filtering).}
 }
 \value{
 A list of clusters, where the first element will correspond to

@@ -88,6 +88,11 @@ filter_clusters <- function(cluster_list, contains_unclustered = TRUE,
 #' \code{filter_clusters} to one cluster. This function is called internally and
 #' used to iterate and filter all clusters supplied via the \code{cluster_list}
 #' argument.
+#'
+#' @param cluster In \code{single_cluster_filter}, a character vector including
+#' the identifiers of the isoforms in a cluster. The function is called internally,
+#' so users will not need to supply this argument (it will be sequentially obtained
+#' from \code{cluster_list} to perform the different iterations of filtering).
 single_cluster_filter <- function(cluster,
                                   cor_matrix,
                                   min_cor,
