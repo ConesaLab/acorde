@@ -56,3 +56,4 @@
 #' Arzalluz-Luque et al.:
 #'
 #' \insertRef{Arzalluz-Luque2021}{acorde}
+"gene_tr_ID"
