@@ -3,7 +3,7 @@
 \docType{data}
 \name{tasic_down}
 \alias{tasic_down}
-\title{Tasic data set}
+\title{Tasic data set (post-downsampling)}
 \format{
 A tibble containing single-cell isoform counts for 241 cells and
 13452 isoforms, represented as columns and rows, respectively.
