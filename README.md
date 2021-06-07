@@ -1,15 +1,49 @@
 # acorde: isoform co-usage networks from single-cell RNA-seq data
-The *acorde* R package contains the necessary code to reproduce the pipeline
-described in Arzalluz-Luque et al. 2021. [[1]](#1)
+The **acorde** R package contains an implementation of the pipeline showcased in
+Arzalluz-Luque et al. 2021 [[1]](#1). *acorde* is an end-to-end, data intensive 
+pipeline designed for the study of isoform co-usage networks using single-cell 
+RNA-seq data (scRNA-seq). The pipeline includes three basic analysis blocks:
 
-The package can be installed from GitHub using `devtools`:
+1. **Single-cell isoform quantification**, where bulk long read data is 
+used to generate tissue-specific transcript models and short-read scRNA-seq data
+is then used for isoform quantification. Isoforms are then filtered according to
+their **Differential Expression** (DE) status across multiple cell types. 
+
+2. **Detection of isoform co-expression**. *acorde* includes the implementation 
+of percentile correlations, a novel strategy to obtain noise-robust correlation
+estimates from scRNA-Seq data, and a semi-automated clustering approach to detect
+modules of co-expressed isoforms acorss cell types.
+
+3. **Differential and co-Differential Isoform Usage analysis**. DIU and co-DIU
+analysis are designed to leverage the multiple cell types contained in single-cell
+datasets, and enable the detection of genes that show isoform expression 
+coordination. To couple these analysis with a biologically interpretable readout,
+we incorporate functional annotations onto isoform models, and use 
+[tappAS](https://github.com/ConesaLab/tappAS) for functional analysis.
+
+![](images/acorde_pipeline.png)
+
+Note that, since both the long read-transcriptome definition procedure and the 
+functional analyses in [[1]](#1) are based on extrenal tools, the present R 
+package does not incorporate neither of these two analysis steps. Instead,
+*acorde* contains the necessary functions and documentation to obtain a set of 
+DIU and co-DIU genes from an single-cell, isoform-level expression matrix,
+enabling each of the steps of the pipeline for users to employ on their own 
+single-cell data. 
+
+In addition, we provide all the necessary instructions to reproduce the figures 
+and analyses included in Arzalluz-Luque et al. [[1]](#1), and provide the isoform
+expression matrix as internal data in the package.
+
+The *acorde* R package and all the necessary dependencies  can be installed 
+from GitHub using `devtools`:
 
 ```
 install.packages(devtools)
 devtools::install_github("ConesaLab/acorde")
 ```
 
-**WARNING**: Please note that *acorde* is currently under development. If you encounter a 
+**WARNING**: note that *acorde* is currently under development. If you encounter a 
 problem, please [open an issue](https://github.com/ConesaLab/acorde/issues) 
 via GitHub or contact angeles.arzalluz@gmail.com.
   
