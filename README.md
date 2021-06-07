@@ -23,13 +23,12 @@ we incorporate functional annotations onto isoform models, and use
 
 ![](images/acorde_pipeline.png)
 
-Note that, since both the long read-transcriptome definition procedure and the 
-functional analyses in [[1]](#1) are based on extrenal tools, the present R 
-package does not incorporate neither of these two analysis steps. Instead,
+Since both the long read-transcriptome definition procedure and the 
+functional analyses in [[1]](#1) are based on external tools, the present R 
+package does **not** incorporate neither of these two analysis steps. Instead,
 *acorde* contains the necessary functions and documentation to obtain a set of 
-DIU and co-DIU genes from an single-cell, isoform-level expression matrix,
-enabling each of the steps of the pipeline for users to employ on their own 
-single-cell data. 
+DIU and co-DIU genes using an single-cell, isoform-level expression matrix as 
+input.
 
 In addition, we provide all the necessary instructions to reproduce the figures 
 and analyses included in Arzalluz-Luque et al. [[1]](#1), and provide the isoform
