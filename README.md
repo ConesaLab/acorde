@@ -4,37 +4,33 @@
 The **acorde** R package contains an implementation of the pipeline showcased in
 Arzalluz-Luque et al. 2021 [[1]](#1). *acorde* is an end-to-end, data intensive 
 pipeline designed for the study of isoform co-usage networks using single-cell 
-RNA-seq data (scRNA-seq). The pipeline includes three basic analysis blocks:
+RNA-seq data (scRNA-seq). 
 
-1. **Single-cell isoform quantification**, where bulk long read data is 
-used to generate tissue-specific transcript models and short-read scRNA-seq data
-is then used for isoform quantification. Isoforms are then filtered according to
-their **Differential Expression** (DE) status across multiple cell types. 
+The pipeline includes three basic analysis blocks:
 
-2. **Detection of isoform co-expression**. *acorde* includes the implementation 
-of percentile correlations, a novel strategy to obtain noise-robust correlation
-estimates from scRNA-Seq data, and a semi-automated clustering approach to detect
-modules of co-expressed isoforms acorss cell types.
+1. Single-cell isoform quantification and Differential Expression (DE) filtering. 
 
-3. **Differential and co-Differential Isoform Usage analysis**. DIU and co-DIU
-analysis are designed to leverage the multiple cell types contained in single-cell
-datasets, and enable the detection of genes that show isoform expression 
-coordination. To couple these analysis with a biologically interpretable readout,
-we incorporate functional annotations onto isoform models, and use 
+2. Detection of isoform co-expression relationships using percentile correlations
+and semi-automated clustering.
+
+3. Differential and co-Differential Isoform Usage analysis. To couple these 
+analysis with a biologically interpretable readout, we incorporate functional 
+annotations onto isoform models, and use 
 [tappAS](https://github.com/ConesaLab/tappAS) for functional analysis.
 
-![](images/acorde_pipeline.png)
+![](images/acorde_pipeline-small.png)
 
 Since both the long read-transcriptome definition procedure and the 
 functional analyses in [[1]](#1) are based on external tools, the present R 
-package does **not** incorporate neither of these two analysis steps. Instead,
-*acorde* contains the necessary functions and documentation to obtain a set of 
-DIU and co-DIU genes using an single-cell, isoform-level expression matrix as 
-input.
+package does **not** include them. 
 
-In addition, we provide all the necessary instructions to reproduce the figures 
-and analyses included in Arzalluz-Luque et al. [[1]](#1), and provide the isoform
-expression matrix as internal data in the package.
+
+*acorde* contains the necessary functions and documentation to obtain 
+a set of DIU and co-DIU genes using an single-cell, isoform-level expression 
+matrix as input. In addition, we provide instructions to reproduce the figures 
+and additional analyses included in Arzalluz-Luque et al. [[1]](#1).
+The isoform expression matrix employed during the study as internal 
+data in the package.
 
 
 ### Installation
