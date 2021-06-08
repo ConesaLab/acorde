@@ -42,6 +42,11 @@ install.packages(devtools)
 devtools::install_github("ConesaLab/acorde")
 ```
 
+To access vignettes, you will need to force building with
+`devtools::install_github(build_vignettes = TRUE)`. Please note that this will
+also install all suggested packages required for vignette build and might 
+increase install time.
+
 **WARNING**: note that *acorde* is currently under development. If you encounter a 
 problem, please [open an issue](https://github.com/ConesaLab/acorde/issues) 
 via GitHub or contact angeles.arzalluz@gmail.com.

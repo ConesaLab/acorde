@@ -31,12 +31,14 @@ Imports:
     tibble,
     utils
 Suggests:
+    knitr,
     BiocParallel,
     DESeq2,
     edgeR,
     SingleCellExperiment,
     SummarizedExperiment,
-    zinbwave
+    zinbwave,
+    rmarkdown
 RdMacros:
     Rdpack
-
+VignetteBuilder: knitr
