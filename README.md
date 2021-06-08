@@ -37,7 +37,7 @@ The *acorde* R package and all the necessary dependencies  can be installed
 from GitHub using `devtools`:
 
 ```
-install.packages(devtools)
+install.packages("devtools")
 devtools::install_github("ConesaLab/acorde")
 ```
 
