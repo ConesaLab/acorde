@@ -60,6 +60,7 @@ via GitHub or send an email to angeles.arzalluz@gmail.com.
   
 ### References
 If you use *acorde* in your research, please cite:
+
 <a id="1">[1]</a>
 Angeles Arzalluz-Luque, Pedro Salguero, Sonia Tarazona, Ana Conesa:
 *Acorde*: unraveling functionally-interpretable networks of isoform co-usage 
