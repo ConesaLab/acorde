@@ -1,4 +1,6 @@
 # acorde: isoform co-usage networks from single-cell RNA-seq data
+
+### Introduction
 The **acorde** R package contains an implementation of the pipeline showcased in
 Arzalluz-Luque et al. 2021 [[1]](#1). *acorde* is an end-to-end, data intensive 
 pipeline designed for the study of isoform co-usage networks using single-cell 
@@ -34,6 +36,8 @@ In addition, we provide all the necessary instructions to reproduce the figures
 and analyses included in Arzalluz-Luque et al. [[1]](#1), and provide the isoform
 expression matrix as internal data in the package.
 
+
+### Installation
 The *acorde* R package and all the necessary dependencies  can be installed 
 from GitHub using `devtools`:
 
@@ -47,12 +51,15 @@ To access vignettes, you will need to force building with
 also install all suggested packages required for vignette build and might 
 increase install time.
 
-**WARNING**: note that *acorde* is currently under development. If you encounter a 
+
+### Contact
+Note that *acorde* is currently under development. If you encounter a 
 problem, please [open an issue](https://github.com/ConesaLab/acorde/issues) 
-via GitHub or contact angeles.arzalluz@gmail.com.
+via GitHub or send an email to angeles.arzalluz@gmail.com.
   
   
-  
+### References
+If you use *acorde* in your research, please cite:
 <a id="1">[1]</a>
 Angeles Arzalluz-Luque, Pedro Salguero, Sonia Tarazona, Ana Conesa:
 *Acorde*: unraveling functionally-interpretable networks of isoform co-usage 
