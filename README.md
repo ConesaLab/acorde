@@ -18,12 +18,9 @@ analysis with a biologically interpretable readout, we incorporate functional
 annotations onto isoform models, and use 
 [tappAS](https://github.com/ConesaLab/tappAS) for functional analysis.
 
-![](images/acorde_pipeline-small.png)
-
 Since both the long read-transcriptome definition procedure and the 
 functional analyses in [[1]](#1) are based on external tools, the present R 
 package does **not** include them. 
-
 
 *acorde* contains the necessary functions and documentation to obtain 
 a set of DIU and co-DIU genes using an single-cell, isoform-level expression 
@@ -31,6 +28,8 @@ matrix as input. In addition, we provide instructions to reproduce the figures
 and additional analyses included in Arzalluz-Luque et al. [[1]](#1).
 The isoform expression matrix employed during the study as internal 
 data in the package.
+
+![](images/acorde_pipeline-small.png)
 
 
 ### Installation
