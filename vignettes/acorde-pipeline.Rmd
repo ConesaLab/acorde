@@ -4,7 +4,7 @@ author: "Ángeles Arzalluz-Luque"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{acorde-pipeline}
+  %\VignetteIndexEntry{Step-by-step guide to the acorde pipeline}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -16,6 +16,238 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r setup}
-library(acorde)
+
+## 1. Introduction
+
+The **acorde** R package contains the necessary functions to reproduce the
+pipeline in [this paper](https://www.biorxiv.org/content/10.1101/2021.05.07.441841v1),
+a study by *Arzalluz-Luque et al.* in which we analyze networks of isoform co-usage
+using single-cell RNA-seq data (scRNA-seq).
+
+The pipeline includes three basic analysis blocks:
+
+1. **Single-cell isoform quantification and filtering**. First, bulk long read data is 
+used to generate tissue-specific transcript models. Short-read scRNA-seq data
+is then used for isoform quantification, and isoforms are filtered according to
+their **Differential Expression** (DE) status across multiple cell types. 
+
+2. **Detection of isoform co-expression**. *acorde* includes the implementation 
+of percentile correlations, a novel strategy to obtain noise-robust correlation
+estimates from scRNA-Seq data, and a semi-automated clustering approach to detect
+modules of co-expressed isoforms acorss cell types.
+
+3. **Differential and co-Differential Isoform Usage analysis**. DIU and co-DIU
+analysis are designed to leverage the multiple cell types contained in single-cell
+datasets, and enable the detection of genes that show isoform expression 
+coordination. To couple these analysis with a biologically interpretable readout,
+we incorporate functional annotations onto isoform models, and use 
+[tappAS](https://github.com/ConesaLab/tappAS) for functional analysis.
+
+Since both the long read-transcriptome definition procedure and the 
+functional analyses in [[1]](#1) are based on external tools, the present R 
+package does **not** incorporate neither of these two analysis steps. Instead,
+acorde contains the necessary functions and documentation to obtain a set of 
+DIU and co-DIU genes using an single-cell, isoform-level expression matrix as 
+input.
+
+In addition, we provide all the necessary instructions to reproduce the figures 
+and additional analyses included in Arzalluz-Luque et al. [[1]](#1), 
+and provide the isoform expression matrix employed during the study as internal 
+data in the package.
+
+![Complete acorde pipeline](../images/acorde_pipeline-small.png)
+
+## 2. Installation
+
+Acorde can be installed from GitHub using `devtools`:
+
+```{r, eval = FALSE}
+install.packages("devtools")
+devtools::install_github("ConesaLab/acorde", build_vignettes = TRUE)
+
 ```
+
+
+## 3. Getting ready
+
+To run the analyses in this vignette, you'll first need to load `acorde`:
+
+```{r setup}
+# load acorde
+library(acorde)
+
+# load auxiliary packages
+suppressPackageStartupMessages({
+  library(tibble)
+  library(dplyr)
+  library(purrr)
+  library(furrr)
+  library(ggplot2)
+})
+```
+
+In addition, we'll require some additional packages for data 
+handling and formatting. Most of them are signaled as `acorde` dependencies, 
+so they will already be installed in your system.
+
+To generate plots, we make use of the `cowplot` R package and the cowplot theme.
+After install:
+
+```{r, eval = FALSE}
+install.packages("cowplot")
+```
+
+you can load and set the theme of your R session as follows:
+
+```{r}
+library(cowplot)
+theme_set(theme_cowplot())
+```
+
+
+
+## 4. Input data
+
+The acorde pipeline requires a **single-cell isoform expression** matrix as input.
+Single-cell isoform counts should be provided in the form of a `data.frame` or 
+`tibble` object including isoforms as rows and cells as columns. Isoform identifiers
+can be supplied as `rownames()` or as an additional identifier column, as required
+by [tibble](https://tibble.tidyverse.org/articles/tibble.html).
+
+To generate an isoform-level single-cell expression matrix, we first processed long 
+read bulk data from ENCODE (provided by Wyman et al. [[2]](#2)) to build a mouse 
+neural transcriptome, and then used publicly-available scRNA-seq data by Tasic 
+et al. [[3]](#3) to quantify the expression of long read-defined isoforms in mouse 
+neural cell types. Details to this process can be found in [our manuscript](https://www.biorxiv.org/content/10.1101/2021.05.07.441841v1) 
+(see Supplementary Note and Methods).
+
+If you wish to reproduce the analyses in Arzalluz-Luque et al. [[1]](#1)), you can load the
+`tasic_down` object to use our isoform-quantified dataset:
+
+```{r}
+# load Tasic dataset
+data("tasic_down")
+
+# load Tasic metadata
+data("metadata_down")
+```
+
+These contain two `tibble` objects. After downsampling and quality control
+(see Methods in [[1]](#1)), the `tasic_down` tibble contains expression data 
+for **13452 isoforms** and **241 cells** belonging to 7 neural cell types:
+
+```{r, echo = FALSE}
+knitr::kable(metadata_down$cell_type %>% table %>% 
+               enframe(name = "Cell type", value = "Number of cells"))
+```
+
+```{r}
+# display format of tasic_down
+tasic_down[1:6, 1:8]
+
+# number of cells and isoforms
+dim(tasic_down)
+
+```
+
+**Metadata** is contained in the `metadata_down` tibble. This table was generated 
+using Tasic et al. supplementary files, which were used to parse cell type labels for 
+single-cell IDs (i.e. sequencing run IDs, included in the `run` column), among 
+other information:
+
+```{r}
+# show information contained in metadata_down
+metadata_down %>% colnames
+
+# display cell type labels and abundances
+unique(metadata_down$cell_type)
+```
+
+See `?tasic_down` and `?metadata_down` for details.
+
+## 5. Isoform Differential Expression across multiple cell types
+
+To select isoforms with robust co-variation across the 7 neural cell types, 
+we first applied **multi-group Differential Expression analysis**, which will
+detect isoforms that are differentially expressed (DE) in at least one cell type.
+
+To achieve this, we combined the zero-weighting strategy in the [zinbwave](https://bioconductor.org/packages/release/bioc/vignettes/zinbwave/inst/doc/intro.html) 
+R package with bulk-designed DE methods [DESeq2](https://bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html) 
+and [edgeR](https://bioconductor.org/packages/release/bioc/vignettes/edgeR/inst/doc/edgeRUsersGuide.pdf).
+Both tools were set to detect DE across multiple groups. The incorporation of 
+weights to these analyses and the correct application of both tools to scRNA-seq 
+data was done following the 
+[Differential Expression section](https://bioconductor.org/packages/release/bioc/vignettes/zinbwave/inst/doc/intro.html#differential-expression) 
+in the zinbwave vignette. 
+
+Acorde provides the `cell_type_DE()` function, which constitutes a wrapper to 
+these two methodologies. This function takes a `SingleCellExperiment` object
+as input, and can run `DESeq2`, `edgeR` or both methods using the `mode` argument.
+
+```{r}
+# convert tibble to count matrix
+count.matrix <- column_to_rownames(tasic_down, "transcript_id") %>% 
+  as.matrix
+# round estimated counts from RSEM to generate integer values
+count.matrix <- count.matrix %>% round
+
+# create SingleCellExperiment object with Tasic data
+library(SingleCellExperiment)
+
+sce <- SingleCellExperiment(assays = list(counts = count.matrix, 
+                                          logcounts = log2(count.matrix + 1)),
+                            colData = metadata_down)
+```
+
+Applying `round()` can generate additional all-zero counts, in spite of the
+previous zero count filtering of isoforms. If so, run an additional filtering
+step to avoid errors during DE analysis:
+
+```{r}
+# filter isoforms with all-zero counts from SCE
+sce <- sce[rowSums(counts(sce)) > 0,]
+```
+
+By default, `cell_type_DE()` automatically calculates and stores zinbwave weights in the
+`SingleCellExperiment` object. Alternatively, you may set `compute_weights = FALSE`
+and perform this calculations yourself (note that computing weights is a 
+computationally costly step, so we'll use the `BiocParallel` R package to 
+parallelize the process):
+
+```{r, eval = FALSE}
+# load biocParallel
+library(BiocParallel)
+
+# compute weights
+sce <- zinbwave(sce, observationalWeights = TRUE, 
+                BPPARAM = MulticoreParam(6))
+```
+
+
+
+### References
+
+If you use *acorde* in your research, please cite:
+
+- <a id="1">[1]</a>
+Angeles Arzalluz-Luque, Pedro Salguero, Sonia Tarazona, Ana Conesa:
+*Acorde*: unraveling functionally-interpretable networks of isoform co-usage 
+from single cell data. *bioRxiv* 2021.05.07.441841 (2021); 
+doi: https://doi.org/10.1101/2021.05.07.441841
+
+
+Long-read data was obtained from the [ENCODE consortium](http://encodeproject.org/),
+and made publicly available by Wyman et al. in their bioRxiv preprint:
+
+- <a id="2">[2]</a>
+Dana Wyman, Gabriela Balderrama-Gutierrez, Fairlie Reese, 
+Shan Jiang, Sorena Rahmanian, Weihua Zeng, Brian Williams, Diane Trout, Whitney 
+England, Sophie Chu, Robert C. Spitale, Andrea Tenner, Barbara Wold, Ali Mortazavi:
+A technology-agnostic long-read analysis pipeline for transcriptome discovery 
+and quantification. *bioRxiv* 672931 (2020); doi: https://doi.org/10.1101/672931 
+
+Short-read scRNA-seq data was obtained from Tasic et al. (2016): 
+
+- <a id="3">[3]</a>
+Tasic, B. et al. Adult mouse cortical cell taxonomy revealed by single cell 
+transcriptomics. *Nature Neuroscience*. 19, 335–346 (2016).

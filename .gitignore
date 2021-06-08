@@ -5,3 +5,5 @@
 .Rbuildignore
 acorde.Rproj
 inst/doc
+/doc/
+/Meta/
