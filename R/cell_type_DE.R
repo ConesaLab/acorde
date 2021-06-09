@@ -66,7 +66,8 @@ cell_type_DE <- function(data, mode = c("edgeR", "DESeq2", "both"),
 
     message("Computing cell-level weights using ZINBWaVe...")
 
-    data <- zinbwave::zinbwave(data, observationalWeights = TRUE)
+    data <- zinbwave::zinbwave(data, observationalWeights = TRUE,
+                               BPPARAM = BiocParallel::MulticoreParam(6))
 
   } else {
     message("Note: compute_weights = FALSE.
@@ -285,7 +286,8 @@ run_downsampling <- function(data, id_table, downsampling_ct,
 
   # calculate weights
   message("Calculating ZINBWaVE weights...")
-  sce <- zinbwave::zinbwave(sce, observationalWeights = TRUE, BPPARAM = BiocParallel::MulticoreParam(6))
+  sce <- zinbwave::zinbwave(sce, observationalWeights = TRUE,
+                            BPPARAM = BiocParallel::MulticoreParam(6))
 
   return(sce)
 }
