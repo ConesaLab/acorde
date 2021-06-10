@@ -192,7 +192,7 @@ count.matrix <- column_to_rownames(tasic_down, "transcript_id") %>%
 count.matrix <- count.matrix %>% round
 
 # create SingleCellExperiment object with Tasic data
-library(SingleCellExperiment)
+library(SingleCellExperiment, quietly = TRUE)
 
 sce <- SingleCellExperiment(assays = list(counts = count.matrix, 
                                           logcounts = log2(count.matrix + 1)),
@@ -209,19 +209,90 @@ sce <- sce[rowSums(counts(sce)) > 0,]
 ```
 
 By default, `cell_type_DE()` automatically calculates and stores zinbwave weights in the
-`SingleCellExperiment` object. Alternatively, you may set `compute_weights = FALSE`
-and perform this calculations yourself (note that computing weights is a 
-computationally costly step, so we'll use the `BiocParallel` R package to 
-parallelize the process):
+`weights` slot of the `SingleCellExperiment` object. Alternatively, you may set 
+`cell_type_DE(compute_weights = FALSE)` and run `zinbwave()` yourself 
+(note that computing weights is a computationally costly step, so we'll use 
+the `BiocParallel` R package to parallelize the process):
 
-```{r, eval = FALSE}
+```{r}
 # load biocParallel
 library(BiocParallel)
 
 # compute weights
+library(zinbwave)
+
 sce <- zinbwave(sce, observationalWeights = TRUE, 
                 BPPARAM = MulticoreParam(6))
 ```
+
+Now we are ready to run isoform-level Differential Expression analysis. We'll
+set `cell_type_DE(method = "both")` to be able to compare multi-group DE
+results for both edgeR and DESeq2.
+
+```{r}
+# run DE analysis using both DESeq2 and edgeR
+de_results <- cell_type_DE(sce, AdjPvalue = 0.05, 
+                           mode = "both", 
+                           compute_weights = FALSE)
+
+# view DE results
+de_results
+```
+
+To obtain an overview of the number of isoforms that are DE in at least one cell type
+reported by each of the methods, we can use the UpSetR package to calculate and
+plot the intersection between the results stored in `de_results`:
+
+
+```{r}
+library(UpSetR)
+
+de_isoforms <- list(edgeR = de_results$edgeR %>% select(transcript) %>% unlist,
+                    DESeq2 = de_results$DESeq2 %>% select(transcript) %>% unlist)
+
+upset(fromList(de_isoforms), nsets = 6, order.by = "freq", 
+      sets.x.label = "DE isoforms \n(AdjP < 0.05)", text.scale = 1.5, 
+      set_size.scale_max = 8000)
+```
+
+In our study, we preserved an isoform for downstream analysis if it was detected
+as significantly DE by *at least one of the methods*, that is, 
+we preserved the **union of DE results**. In addition, isoforms were removed if
+they belonged to genes with a single DE isoform since, in practice, no 
+differential splicing can occur for single-isoform genes (or for genes for which
+only one isoform presents expression variation across cell types). Isoform - gene
+correspondence is provided by acorde in the `gene_tr_ID` data object.
+
+```{r}
+# keep the union of edgeR and DESeq2 DE isoforms
+tasic_de <- tasic_down %>% 
+  filter(transcript_id %in% de_results$edgeR$transcript |
+         transcript_id %in% de_results$DESeq2$transcript)
+
+# load and display gene-isoform table
+data("gene_tr_ID")
+head(gene_tr_ID)
+
+# remove transcripts from single-isoform genes
+multi_iso <- split(tasic_de$transcript_id,
+                  gene_tr_ID[match(tasic_de$transcript_id, gene_tr_ID$transcript_id),]$gene_id)
+multi_iso <- multi_iso[map_int(multi_iso, length) > 1] %>% unlist
+
+tasic_sp <- tasic_de %>%
+  filter(transcript_id %in% multi_iso)
+```
+
+As a summary, here's a comparison of the number of isoforms remaining in our 
+expression matrix after performing these filtering steps:
+
+```{r, echo = FALSE}
+knitr::kable(tibble(Object = c("tasic_down", "tasic_de", "tasic_sp"), 
+                    Content = c("All isoforms", "DE isoforms", 
+                            "DE isoforms from multi-isoform genes"),
+                    Isoform_no = c(nrow(tasic_down), nrow(tasic_de),
+                                  nrow(tasic_sp))))
+```
+
 
 
 
