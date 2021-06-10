@@ -133,8 +133,9 @@ data("metadata_down")
 ```
 
 These contain two `tibble` objects. After downsampling and quality control
-(see Methods in [[1]](#1)), the `tasic_down` tibble contains expression data 
-for **13452 isoforms** and **241 cells** belonging to 7 neural cell types:
+(see Methods in [Arzalluz-Luque et al.](https://doi.org/10.1101/2021.05.07.441841) 
+[[1]](#1)), the `tasic_down` tibble contains expression data for **13452 isoforms** 
+and **241 cells** belonging to 7 neural cell types:
 
 ```{r, echo = FALSE}
 knitr::kable(metadata_down$cell_type %>% table %>% 
@@ -292,6 +293,48 @@ knitr::kable(tibble(Object = c("tasic_down", "tasic_de", "tasic_sp"),
                     Isoform_no = c(nrow(tasic_down), nrow(tasic_de),
                                   nrow(tasic_sp))))
 ```
+
+
+## 6. Computing isoform co-expression using percentile correlations
+
+To detect isoform co-expression across the 7 neural cell types in the Tasic
+dataset, we will apply **percentile correlations**. Percentile correlations,
+as described in [[1]](#1)), are a metric designed to overcome cell-to-cell
+effects that generate noise and mask the co-expression signal in the data,
+yielding low correlation values when using traditional correlation metrics.
+
+Instead, percentile correlations are based on a percentile-summarization strategy 
+in which cells of the same cell-type are used to estimate a cell type-specific 
+expression distribution for each isoform and 
+**cell-level counts are replaced by percentile values**. 
+Then, Pearson correlations between isoforms are computed using this
+percentile-summarized expression. More details can be found in 
+[Arzalluz-Luque et al.](https://doi.org/10.1101/2021.05.07.441841) [[1]](#1)) 
+and in the figure below:
+
+![Percentile correlation strategy](../images/percentile_correlations-small.png)
+Acorde includes the `percentile_cor()` function to compute percentile correlations, 
+which takes a cell - cell-type correspondence table and the expression matrix as
+input, and generates an isoform-to-isoform correlation matrix:
+
+```{r}
+# create tibble matching cell IDs to cell-type labels
+id.df <- select(metadata_down, run, cell_type)
+id.df <- rename(id.df, cell = "run")
+
+# compute percentile correlations
+cors <- percentile_cor(tasic_sp, id_table = id.df, percentile_no = 10, 
+                       isoform_col = "transcript_id")
+
+cors[1:5, 1:5]
+```
+
+By default, `percentile_cor()` summarizes isoform expression into 10 percentile 
+values (deciles) per cell type, although users may supply any number between 4 
+(quantiles) and 100 (percentiles). If a tibble is supplied, users will need to
+specify the column name in which isoform identifiers are provided in order for
+`percentile_cor()` to successfully return isoform IDs as column and row names
+in the correlation matrix.
 
 
 
