@@ -51,7 +51,7 @@ percentile_expr <- function(data, id_table, percentile_no = 10, isoform_col = NU
   percentile_list <- map(cells_split, ~(select(data, all_of(.)) %>%
                                           apply(1, quantile, seq(0, 1, step)) %>% as.data.frame))
   percentiles <- bind_rows(percentile_list)
-  colnames(percentiles) <- data[[1]]
+  colnames(percentiles) <- data %>% select(isoform_col) %>% unlist
 
   return(percentiles)
 }
