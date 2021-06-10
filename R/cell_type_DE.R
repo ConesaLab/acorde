@@ -126,10 +126,10 @@ cell_type_DE <- function(data, mode = c("edgeR", "DESeq2", "both"),
     dds <- DESeq2::DESeq(dds, sfType = "poscounts", minReplicatesForReplace = Inf, parallel = TRUE)
 
     # extract results
-    deseq_results <- results(dds, independentFiltering = FALSE) %>% as.data.frame
+    deseq_results <- DESeq2::results(dds, independentFiltering = FALSE) %>% as.data.frame
 
     # filter by p-value threshold
-    if(is.null(pvalue_threshold) == FALSE){
+    if(is.null(AdjPvalue) == FALSE){
       deseq_sig.tr <- deseq_results %>% rownames_to_column("transcript") %>% as_tibble %>%
         filter(padj < AdjPvalue)
     }else{
