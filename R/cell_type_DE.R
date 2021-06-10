@@ -98,7 +98,7 @@ cell_type_DE <- function(data, mode = c("edgeR", "DESeq2", "both"),
     edger_results <- lrt$table %>% rownames_to_column("transcript")
 
     # if provided, filter by p-value threshold
-    if(is.null(pvalue_filter) == FALSE){
+    if(is.null(AdjPvalue) == FALSE){
       edger_sig.tr <- filter(edger_results, padjFilter < AdjPvalue) %>% as_tibble()
     }else{
       message("Note: p-value threshold not provided, full edgeR results will be returned.
