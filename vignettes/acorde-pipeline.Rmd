@@ -12,7 +12,10 @@ vignette: >
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  dpi = 100, 
+  fig.width=7,
+  out.width="100%"
 )
 ```
 
@@ -79,10 +82,10 @@ library(acorde)
 # load auxiliary packages
 suppressPackageStartupMessages({
   library(tibble)
-  library(dplyr)
   library(purrr)
   library(furrr)
   library(ggplot2)
+  library(dplyr)
 })
 ```
 
@@ -185,7 +188,7 @@ Acorde provides the `cell_type_DE()` function, which constitutes a wrapper to
 these two methodologies. This function takes a `SingleCellExperiment` object
 as input, and can run `DESeq2`, `edgeR` or both methods using the `mode` argument.
 
-```{r}
+```{r, message = FALSE}
 # convert tibble to count matrix
 count.matrix <- column_to_rownames(tasic_down, "transcript_id") %>% 
   as.matrix
@@ -193,7 +196,7 @@ count.matrix <- column_to_rownames(tasic_down, "transcript_id") %>%
 count.matrix <- count.matrix %>% round
 
 # create SingleCellExperiment object with Tasic data
-library(SingleCellExperiment, quietly = TRUE)
+library(SingleCellExperiment)
 
 sce <- SingleCellExperiment(assays = list(counts = count.matrix, 
                                           logcounts = log2(count.matrix + 1)),
@@ -215,7 +218,7 @@ By default, `cell_type_DE()` automatically calculates and stores zinbwave weight
 (note that computing weights is a computationally costly step, so we'll use 
 the `BiocParallel` R package to parallelize the process):
 
-```{r}
+```{r, eval = FALSE}
 # load biocParallel
 library(BiocParallel)
 
@@ -230,7 +233,7 @@ Now we are ready to run isoform-level Differential Expression analysis. We'll
 set `cell_type_DE(method = "both")` to be able to compare multi-group DE
 results for both edgeR and DESeq2.
 
-```{r}
+```{r, eval = FALSE}
 # run DE analysis using both DESeq2 and edgeR
 de_results <- cell_type_DE(sce, AdjPvalue = 0.05, 
                            mode = "both", 
@@ -240,13 +243,24 @@ de_results <- cell_type_DE(sce, AdjPvalue = 0.05,
 de_results
 ```
 
+Given that DE results may present subtle variations across method runs, 
+we hereby provide the **DE result tables** that used in the acorde paper 
+to fully ensure the reproducibility of our results. From here on out, 
+this vignette will display the results of using this DE isoform set:
+
+```{r}
+# load isoform DE results for edgeR and DESeq2
+data("de_results")
+```
+
 To obtain an overview of the number of isoforms that are DE in at least one cell type
 reported by each of the methods, we can use the UpSetR package to calculate and
 plot the intersection between the results stored in `de_results`:
 
 
-```{r}
+```{r, message = FALSE}
 library(UpSetR)
+
 
 de_isoforms <- list(edgeR = de_results$edgeR %>% select(transcript) %>% unlist,
                     DESeq2 = de_results$DESeq2 %>% select(transcript) %>% unlist)
@@ -320,7 +334,7 @@ input, and generates an isoform-to-isoform correlation matrix:
 ```{r}
 # create tibble matching cell IDs to cell-type labels
 id.df <- select(metadata_down, run, cell_type)
-id.df <- rename(id.df, cell = "run")
+id.df <- dplyr::rename(id.df, cell = "run")
 
 # compute percentile correlations
 cors <- percentile_cor(tasic_sp, id_table = id.df, percentile_no = 10, 
@@ -383,7 +397,7 @@ In spite of being more flexible than regular hierarchical clustering, the
 dynamicTreeCut algorithm can also generate inconsistent isoform assignments
 to clusters, i.e. group isoforms with rather different expression profiles.
 We'll use some of the **cluster visualization** functions in acorde to 
-see *cluster 6* in `clusters` (`clusters[[7]]`, given that the first element
+see *cluster 1* in `clusters` (`clusters[[2]]`, given that the first element
 of the list corresponds to unclustered isoforms) as an example of this:
 
 ```{r}
@@ -392,7 +406,7 @@ tasic_scaled <- scale_range(tasic_sp, isoform_col = "transcript_id")
 
 # calculate cell type mean expression for all isoforms
 example_means <- calculate_cluster_ctmeans(tasic_scaled,
-                                           isoform_ids = clusters[[7]], 
+                                           isoform_ids = clusters[[2]], 
                                            id_table = id.df)
 
 # plot isoform-level means for all isoforms in the cluster
@@ -402,11 +416,9 @@ plot_cluster_ctmeans(example_means, ct_labels = ctlabs)
 ```
 
 Arguably, some of these isoforms have an expression pattern that is not exactly
-equal to the rest of the members of the cluster, for instance, the interval of
-scaled expression for the Astroctye and Glutamatergic Neuron cell types is
-quite broad. To solve this, we cam use the `filter_clusters()` function, which
-will move isoforms to the unclustered groups if they are poorly correlated with 
-most of the isoforms in the cluster.
+equal to the rest of the members of the cluster. To solve this, we cam use the 
+`filter_clusters()` function, which will move isoforms to the unclustered groups 
+if they are poorly correlated with most of the isoforms in the cluster.
 
 ```{r}
 # see current number of unclustered isoforms
@@ -434,12 +446,12 @@ small to the unclustered group.
 
 As a result, half of the isoforms that were initially input for clustering
 are currently not assigned, and we have successfully cleaned the signal of our 
-initial set of clusters. *cluster 6* now looks like this:
+initial set of clusters. *cluster 1* now looks like this:
 
 ```{r}
 # calculate cell type mean expression for all isoforms
 example_means.filt <- calculate_cluster_ctmeans(tasic_scaled,
-                                           isoform_ids = clusters_filt[[7]], 
+                                           isoform_ids = clusters_filt[[2]], 
                                            id_table = id.df)
 
 # plot isoform-level means for all isoforms in the cluster
@@ -464,7 +476,7 @@ By making this a two-step process, highly correlated
 elements will contribute to strengthen within-cluster signal before assigning 
 more lowly correlated isoforms to the cluster:
 
-```{r}
+```{r, message=FALSE}
 # first round, expand using hard correlation threshold
 clusters.expanded <- expand_clusters(tasic_sp, isoform_col = "transcript_id", 
                                      id_table = id.df,
@@ -494,17 +506,35 @@ clusters.expanded <- expand_clusters(tasic_sp, isoform_col = "transcript_id",
 
 # check number of unclustered isoforms after second round
 length(clusters.expanded$unclustered)
-
-
 ```
-
-
-As shown above, unclustered isoforms are now assigned to the `unclustered` 
-list element, while the list containing the clusters is situated in the `expanded`
-slot. The correlation threshold used to assign an isoform to a cluster can be adjusted 
+The correlation threshold used to assign an isoform to a cluster can be adjusted 
 via the `expand_threshold` parameter. To simplify, users may set `force_expand = TRUE` 
 to assign isoforms to the cluster reporting the highest correlation. In this case, 
 `expand_threshold` will be ignored. 
+
+We can now check the effect of cluster expansion on our example cluster, *cluster 1*.
+Note that after expansion, unclustered isoforms are now assigned to the `unclustered` 
+list element, while the list containing the clusters is situated in the `expanded`
+slot. Therefore, *cluster 1* is now `clusters.expanded$expanded[[1]]`:
+
+```{r}
+# compare cluster sizes
+  # before expansion
+  clusters_filt[[2]] %>% length
+
+  # after expansion
+  example_expanded <- clusters.expanded$expanded[[1]]
+  example_expanded %>% length
+
+
+# calculate cell type mean expression for all isoforms in cluster
+example_means.exp <- calculate_cluster_ctmeans(tasic_scaled,
+                                           isoform_ids = example_expanded, 
+                                           id_table = id.df)
+
+# plot isoform-level means for all isoforms in the cluster
+plot_cluster_ctmeans(example_means.exp, ct_labels = ctlabs)
+```
 
 At this point, we have focused on the reduction of within-cluster variability,
 which results in a large number of small, redundant clusters. To mitigate this,
@@ -519,7 +549,7 @@ For our study, we run dynamic clustering of metatranscripts, providing
 `deepSplit = 4, pamStage = FALSE, minClusterSize = 1` as non-default parameters
 for `merge_clusters` to pass on to `cutreeHybrid`:
 
-```{r}
+```{r, message=FALSE}
 merge.output <- merge_clusters(tasic_sp, isoform_col = "transcript_id",
                                id_table = id.df,
                                cluster_list = clusters.expanded$expanded, 
@@ -528,7 +558,6 @@ merge.output <- merge_clusters(tasic_sp, isoform_col = "transcript_id",
                                minClusterSize = 1,
                                method = "percentile")
 ```
-
 
 `merge_clusters()` returns a nested list including two elements:
 first, a list containing the merged cluster indices, allowing traceback of all
@@ -552,13 +581,17 @@ head(merged_groups)
 map(clusters_merged[1:6], head)
 ```
 
-We can now check the results of any of the cluster merge decisions made by `merge_clusters` 
-(which, after specifying `dynamic = TRUE` runs `cutreeHybrid` under the hood)
-to verify that they are correct:
+After dynamic merge, the 147 clusters that were left after expansion have been 
+reduced to 55 clusters. We can now check the results of any of the cluster merge 
+decisions made by `merge_clusters` (which, after specifying `dynamic = TRUE` runs
+`cutreeHybrid` under the hood) to verify that they are correct. Let's take, for
+instance, `merged cluster 4`:
 
 ```{r}
 # plot an example of clusters that have been merged together
 example_group <- merged_groups[[4]]
+
+example_group
 
 # compute cell type mean expression for merged clusters
 merge_check <- clusters.expanded$expanded[example_group] %>% 
@@ -580,12 +613,23 @@ plot_grid(plotlist = merge_check_plots)
 ## 8. Optional: manual curation of redundant and/or noisy clusters
 
 As shown above, dynamic clustering of metatranscripts generally works well for 
-removing redundancies. However, there are some situations where fully-automated 
+removing redundancies. However, there are some situations where a fully-automated 
 merge does not perform as expected, and we may want more control over the results. 
-In particular, we will next focus on manual curation of **redundancy**, i.e. 
+We will next demonstrate the manual curation of **redundancy**, i.e. 
 exceptions where clearly similar profiles were not merged by clustering 
 metatranscripts, and **noisy profiles**, i.e. cases where automated merging 
-resulted in joining clusters with clearly uncorrelated profiles.
+resuled in joining clusters with clearly uncorrelated profiles.
+
+
+### 8.1. Clusters with noisy profiles
+
+To detect clusters with noisy or inaccurate profiles, that is, clusters including
+isoforms that have very different expression behaviour across cell types, we first
+need to visualize all generated clusters. 
+
+
+
+
 
 
 ### References
