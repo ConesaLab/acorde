@@ -414,7 +414,7 @@ clusters[[1]] %>% length
 
 # run filter_clusters
 clusters_filt <- filter_clusters(clusters, cor_matrix = cors,
-                                 contains_unclustered = 10,
+                                 contains_unclustered = TRUE,
                                  min_cor = 0.85, lowcor_threshold = 3,
                                  size_filter = TRUE, size_threshold = 10)
 
@@ -425,12 +425,16 @@ clusters_filt[[1]] %>% length
 clusters_filt[2:length(clusters_filt)] %>% map_int(length) %>% sum
 ```
 
-*NOTE: insert brief parameter description here*
+In this step, isoforms will be removed from a cluster if they have correlation 
+values below `min_cor` with other members of the cluster. `lowcor_threshold`
+provides the maximum number of correlation values lower than `min_cor` that
+are allowed per isoform. In addition, `size_filter` and `size_threshold` can be
+used to discard clusters by their size, moving isoforms in clusters that are too
+small to the unclustered group.
 
-As you can see, half of the isoforms that were initially input for clustering
-are currently not assigned to any of the clusters. As a result, we have also
-successfully cleaned the signal of our initial set of clusters, and *cluster 6*
-now looks like this:
+As a result, half of the isoforms that were initially input for clustering
+are currently not assigned, and we have successfully cleaned the signal of our 
+initial set of clusters. *cluster 6* now looks like this:
 
 ```{r}
 # calculate cell type mean expression for all isoforms
@@ -442,7 +446,146 @@ example_means.filt <- calculate_cluster_ctmeans(tasic_scaled,
 plot_cluster_ctmeans(example_means.filt, ct_labels = ctlabs)
 ```
 
+Next, we will use the `expand_clusters()` function in acorde to join unclustered 
+isoforms to their most similar cluster. In this process, each cluster's profile
+is first summarized into a synthetic representative transcript that we named
+*metatranscript*. Metatranscripts are calculated as the mean of the percentile-summarized
+expression of all isoforms in the cluster. Then, the function computes percentile 
+correlations between isoforms and cluster metatranscripts.
 
+In our study, we performed **two rounds of assignment** (i.e. expansion). First, 
+we assigned unclustered isoforms to a cluster if they showed correlation > 0.9 
+with its metatranscript (amnd the maximally correlated cluster was selected as the best match 
+if there were ties). Next, metatranscripts were re-calculated for the newly 
+expanded clusters, and we performed another assignment round lowering the 
+correlation threshold to 0.8.
+
+By making this a two-step process, highly correlated 
+elements will contribute to strengthen within-cluster signal before assigning 
+more lowly correlated isoforms to the cluster:
+
+```{r}
+# first round, expand using hard correlation threshold
+clusters.expanded <- expand_clusters(tasic_sp, isoform_col = "transcript_id", 
+                                     id_table = id.df,
+                                     cluster_list = clusters_filt[2:length(clusters_filt)],
+                                     unclustered = clusters_filt[[1]],
+                                     force_expand = FALSE, 
+                                     expand_threshold = 0.9,
+                                     method = "percentile")
+
+# show output format
+names(clusters.expanded)
+map_chr(clusters.expanded, class)
+map_int(clusters.expanded, length)
+
+# check number of unclustered isoforms after first round
+length(clusters.expanded$unclustered)
+
+
+# second round, soft threshold for the rest of the unclustered isoforms
+clusters.expanded <- expand_clusters(tasic_sp, isoform_col = "transcript_id",
+                                     id_table = id.df,
+                                     cluster_list = clusters.expanded$expanded,
+                                     unclustered = clusters.expanded$unclustered,
+                                     force_expand = FALSE, 
+                                     expand_threshold = 0.8,
+                                     method = "percentile")
+
+# check number of unclustered isoforms after second round
+length(clusters.expanded$unclustered)
+
+
+```
+
+
+As shown above, unclustered isoforms are now assigned to the `unclustered` 
+list element, while the list containing the clusters is situated in the `expanded`
+slot. The correlation threshold used to assign an isoform to a cluster can be adjusted 
+via the `expand_threshold` parameter. To simplify, users may set `force_expand = TRUE` 
+to assign isoforms to the cluster reporting the highest correlation. In this case, 
+`expand_threshold` will be ignored. 
+
+At this point, we have focused on the reduction of within-cluster variability,
+which results in a large number of small, redundant clusters. To mitigate this,
+acorde includes the `merge_clusters()` function, which detects expression profile similarities 
+across clusters (redundancy) and merges them into a single cluster. Briefly, `merge_clusters`
+employs a clustering approach using the metatranscripts for computed clusters
+as input, which is done via regular hierarchical clustering (by default) or using
+the dynamic approach implemented in the `cutreeHybrid()` function from the
+dynamicTreeCut package (when `dynamic = TRUE` is set).
+
+For our study, we run dynamic clustering of metatranscripts, providing 
+`deepSplit = 4, pamStage = FALSE, minClusterSize = 1` as non-default parameters
+for `merge_clusters` to pass on to `cutreeHybrid`:
+
+```{r}
+merge.output <- merge_clusters(tasic_sp, isoform_col = "transcript_id",
+                               id_table = id.df,
+                               cluster_list = clusters.expanded$expanded, 
+                               dynamic = TRUE,
+                               deepSplit = 4, pamStage = FALSE,
+                               minClusterSize = 1,
+                               method = "percentile")
+```
+
+
+`merge_clusters()` returns a nested list including two elements:
+first, a list containing the merged cluster indices, allowing traceback of all
+merged decisions; and second, a list containing the merged clusters obtained
+as a result.
+
+
+```{r}
+# show output format
+map_chr(merge.output, class)
+map_int(merge.output, length)
+
+# retrieve outputs
+merged_groups <- merge.output[[1]]
+clusters_merged <- merge.output[[2]]
+
+# show merge decision tree
+head(merged_groups)
+
+# show merged cluster formats
+map(clusters_merged[1:6], head)
+```
+
+We can now check the results of any of the cluster merge decisions made by `merge_clusters` 
+(which, after specifying `dynamic = TRUE` runs `cutreeHybrid` under the hood)
+to verify that they are correct:
+
+```{r}
+# plot an example of clusters that have been merged together
+example_group <- merged_groups[[4]]
+
+# compute cell type mean expression for merged clusters
+merge_check <- clusters.expanded$expanded[example_group] %>% 
+  map(~calculate_cluster_ctmeans(tasic_scaled,
+                                 isoform_ids = .,
+                                 id_table = id.df))
+
+# create plots and plot grid
+merge_check_plots <- seq(1, length(merge_check)) %>% 
+  map(~plot_cluster_ctmeans(merge_check[[.]], 
+                            plot_title = paste("Cluster", example_group[.]), 
+                            ct_labels = ctlabs))
+
+plot_grid(plotlist = merge_check_plots)
+```
+
+
+
+## 8. Optional: manual curation of redundant and/or noisy clusters
+
+As shown above, dynamic clustering of metatranscripts generally works well for 
+removing redundancies. However, there are some situations where fully-automated 
+merge does not perform as expected, and we may want more control over the results. 
+In particular, we will next focus on manual curation of **redundancy**, i.e. 
+exceptions where clearly similar profiles were not merged by clustering 
+metatranscripts, and **noisy profiles**, i.e. cases where automated merging 
+resulted in joining clusters with clearly uncorrelated profiles.
 
 
 ### References
