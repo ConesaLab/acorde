@@ -198,7 +198,7 @@ merge_clusters <- function(data, isoform_col = NULL, id_table,
   if(method == "percentile"){
 
     # get percentile expression
-    percentiles <- percentile_expr(data, ids_to_type, percentile_no = percentile_no,
+    percentiles <- percentile_expr(data, id_table, percentile_no = percentile_no,
                                    isoform_col = isoform_col)
 
     # metatranscripts of clusters: compute mean-summarized percentile expression per transcript
@@ -244,8 +244,7 @@ merge_clusters <- function(data, isoform_col = NULL, id_table,
   h.meta <- stats::hclust(dist.meta, method = "complete")
   # create groups from the dendrogram
   if(dynamic == TRUE){
-    hcut <- dynamicTreeCut::cutreeHybrid(h.meta, as.matrix(dist.meta),
-                                         minClusterSize = 1, ...)
+    hcut <- dynamicTreeCut::cutreeHybrid(h.meta, as.matrix(dist.meta), ...)
     hcut <- hcut$labels
 
   } else if(dynamic == FALSE){
