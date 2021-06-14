@@ -57,3 +57,21 @@
 #'
 #' \insertRef{Arzalluz-Luque2021}{acorde}
 "gene_tr_ID"
+
+
+#' @title Isoform Differential Expression analysis results
+#'
+#' @description This object contains isoform Differential Expression results obtained
+#' using edgeR and DESeq2 on the Tasic dataset. Given potential variability across
+#' DE method runs and to ensure the reproducibility of the results in Arzalluz-Luque
+#' et al. (see refs.), we provide the original results used in the manuscript.
+#'
+#' @format A named list of length 2 containing two tibbles including \code{edgeR} and
+#' \code{DESeq2} result tables, respectively. These are output by the
+#' \code{\link{cell_type_DE}} function.
+#'
+#' @references
+#'
+#' \insertRef{Arzalluz-Luque2021}{acorde}
+"de_results"
+
