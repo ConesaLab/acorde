@@ -13,10 +13,11 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  dpi = 100, 
-  fig.width=7,
+  dpi = 300, 
   out.width="100%"
 )
+
+options(width = 1280)
 ```
 
 
@@ -396,9 +397,16 @@ can pass any additional parameters supplied to `cutreeHybrid()`.
 In spite of being more flexible than regular hierarchical clustering, the
 dynamicTreeCut algorithm can also generate inconsistent isoform assignments
 to clusters, i.e. group isoforms with rather different expression profiles.
-We'll use some of the **cluster visualization** functions in acorde to 
-see *cluster 1* in `clusters` (`clusters[[2]]`, given that the first element
-of the list corresponds to unclustered isoforms) as an example of this:
+
+We'll now use two of the **cluster visualization** functions in acorde to 
+view *cluster 1* in `clusters` (`clusters[[2]]`, given that the first element
+of the list corresponds to unclustered isoforms) as an example of this. Acorde
+provides a function, `calculate_cluster_ctmeans()`, to compute the mean and
+standard error of cell type expression for each of the isoforms in a cluster.
+In this manner, the similarities of the expression profiles across cell types
+can be easily compared for same-cluster isoforms. The output of 
+`calculate_cluster_ctmeans` can be directly provided to `plot_cluster_ctmeans()`
+to generate a visual summary of all isoforms in a cluster:
 
 ```{r}
 # scale isoform expression
@@ -415,9 +423,9 @@ ctlabs <- c("Astr", "End", "GABA", "Glut", "Micro", "Oligo", "OPC")
 plot_cluster_ctmeans(example_means, ct_labels = ctlabs)
 ```
 
-Arguably, some of these isoforms have an expression pattern that is not exactly
-equal to the rest of the members of the cluster. To solve this, we cam use the 
-`filter_clusters()` function, which will move isoforms to the unclustered groups 
+Arguably, some of the isoforms in *cluster 1* have an expression pattern that is 
+slightly different to the rest of the members of the cluster. To solve this, we 
+can use the `filter_clusters()` function, which will move isoforms to the unclustered groups 
 if they are poorly correlated with most of the isoforms in the cluster.
 
 ```{r}
@@ -478,7 +486,7 @@ more lowly correlated isoforms to the cluster:
 
 ```{r, message=FALSE}
 # first round, expand using hard correlation threshold
-clusters.expanded <- expand_clusters(tasic_sp, isoform_col = "transcript_id", 
+clusters_expanded <- expand_clusters(tasic_sp, isoform_col = "transcript_id", 
                                      id_table = id.df,
                                      cluster_list = clusters_filt[2:length(clusters_filt)],
                                      unclustered = clusters_filt[[1]],
@@ -487,26 +495,27 @@ clusters.expanded <- expand_clusters(tasic_sp, isoform_col = "transcript_id",
                                      method = "percentile")
 
 # show output format
-names(clusters.expanded)
-map_chr(clusters.expanded, class)
-map_int(clusters.expanded, length)
+names(clusters_expanded)
+map_chr(clusters_expanded, class)
+map_int(clusters_expanded, length)
 
 # check number of unclustered isoforms after first round
-length(clusters.expanded$unclustered)
+length(clusters_expanded$unclustered)
 
 
 # second round, soft threshold for the rest of the unclustered isoforms
-clusters.expanded <- expand_clusters(tasic_sp, isoform_col = "transcript_id",
+clusters_expanded <- expand_clusters(tasic_sp, isoform_col = "transcript_id",
                                      id_table = id.df,
-                                     cluster_list = clusters.expanded$expanded,
-                                     unclustered = clusters.expanded$unclustered,
+                                     cluster_list = clusters_expanded$expanded,
+                                     unclustered = clusters_expanded$unclustered,
                                      force_expand = FALSE, 
                                      expand_threshold = 0.8,
                                      method = "percentile")
 
 # check number of unclustered isoforms after second round
-length(clusters.expanded$unclustered)
+length(clusters_expanded$unclustered)
 ```
+
 The correlation threshold used to assign an isoform to a cluster can be adjusted 
 via the `expand_threshold` parameter. To simplify, users may set `force_expand = TRUE` 
 to assign isoforms to the cluster reporting the highest correlation. In this case, 
@@ -515,7 +524,7 @@ to assign isoforms to the cluster reporting the highest correlation. In this cas
 We can now check the effect of cluster expansion on our example cluster, *cluster 1*.
 Note that after expansion, unclustered isoforms are now assigned to the `unclustered` 
 list element, while the list containing the clusters is situated in the `expanded`
-slot. Therefore, *cluster 1* is now `clusters.expanded$expanded[[1]]`:
+slot. Therefore, *cluster 1* is now `clusters_expanded$expanded[[1]]`:
 
 ```{r}
 # compare cluster sizes
@@ -523,7 +532,7 @@ slot. Therefore, *cluster 1* is now `clusters.expanded$expanded[[1]]`:
   clusters_filt[[2]] %>% length
 
   # after expansion
-  example_expanded <- clusters.expanded$expanded[[1]]
+  example_expanded <- clusters_expanded$expanded[[1]]
   example_expanded %>% length
 
 
@@ -552,7 +561,7 @@ for `merge_clusters` to pass on to `cutreeHybrid`:
 ```{r, message=FALSE}
 merge.output <- merge_clusters(tasic_sp, isoform_col = "transcript_id",
                                id_table = id.df,
-                               cluster_list = clusters.expanded$expanded, 
+                               cluster_list = clusters_expanded$expanded, 
                                dynamic = TRUE,
                                deepSplit = 4, pamStage = FALSE,
                                minClusterSize = 1,
@@ -594,7 +603,7 @@ example_group <- merged_groups[[4]]
 example_group
 
 # compute cell type mean expression for merged clusters
-merge_check <- clusters.expanded$expanded[example_group] %>% 
+merge_check <- clusters_expanded$expanded[example_group] %>% 
   map(~calculate_cluster_ctmeans(tasic_scaled,
                                  isoform_ids = .,
                                  id_table = id.df))
@@ -627,7 +636,85 @@ To detect clusters with noisy or inaccurate profiles, that is, clusters includin
 isoforms that have very different expression behaviour across cell types, we first
 need to visualize all generated clusters. 
 
+Up to this point, acorde has generated 60 total isoform clusters. To enable a more
+summarized and elegant view of cluster profiles than that generated by 
+`plot_cluster_ctmeans()`, acorde also includes a two functions that compute and plot 
+the mean and standard deviation of cell type-summarized expression for clustered 
+isoforms, creating a fully summarized view of the cluster:
 
+```{r, fig.height=14, fig.width=10}
+# calculate cluster summarized profiles
+merged_profiles <- map(clusters_merged, 
+                       ~calculate_cluster_profile(tasic_scaled,
+                                                  id_table = id.df,
+                                                  isoform_ids = .))
+
+# create all pattern plots
+merged_plots <- map(merged_profiles,
+                    ~plot_cluster_profile(., ct_labels = ctlabs) +
+                      theme(text = element_text(size = 7),
+                                axis.text = element_text(size = 7)))
+
+# create grid
+plot_grid(plotlist = merged_plots, nrow = 10, 
+          labels = seq(1, length(merged_plots)), 
+          label_size = 8)
+
+```
+
+Among the 60 clusters generated as a result of unsupervised clustering, there are
+a few that show strong variability in comparison to the global cluster mean, given
+the broad standard deviation ribbon in some of the plots (take for instance
+clusters 2, 3 or 5). 
+
+To mitigate this, we decided to use the `expand_clusters()` function with a correlation
+threshold of 0.8 to re-assign isoforms in clusters that had a visibly inaccurate
+(i.e. noisy) profile:
+
+```{r, message=FALSE}
+# select noisy clusters by number
+noisy <- c(2, 3, 5, 11, 17, 19, 21, 24, 25, 26, 
+           32, 36, 38, 43, 48, 52, 58, 59)
+
+# use expand_clusters() to re-assign
+clusters_merged.exp <- expand_clusters(tasic_sp, isoform_col = "transcript_id",
+                                       id_table = id.df, 
+                                       cluster_list = clusters_merged[-noisy],
+                                       unclustered = unlist(clusters_merged[noisy]), 
+                                       force_expand = FALSE,
+                                       expand_threshold = 0.8,
+                                       method = "percentile")
+
+# show contents
+map_int(clusters_merged.exp, length)
+
+```
+
+Now, there are additional unclustered transcripts in `clusters_merged.exp$unlcustered`. 
+We will join these with the isoforms that remained unclustered after our previous 
+two rounds of cluster expansion, and get the total number of isoforms that have not
+been clustered by our pipeline:
+
+```{r}
+# group unclustered isoforms
+unclustered <- c(clusters_expanded$unclustered, 
+                 clusters_merged.exp$unclustered)
+
+# show total number of unclustered
+length(unclustered)
+
+# remove unclustered from current cluster list
+clusters_merged.exp <- clusters_merged.exp$expanded
+
+# show current number of clusters
+length(clusters_merged.exp)
+```
+
+Removing noisy clusters and assigning their isoforms to other groups leaves 
+**42 clusters** that can now be evaluated for potential redundancies. 
+
+
+### 8.2. Clusters with redundant profiles
 
 
 
