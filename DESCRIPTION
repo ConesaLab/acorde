@@ -33,6 +33,7 @@ Imports:
 Suggests:
     knitr,
     BiocParallel,
+    BiocStyle,
     DESeq2,
     edgeR,
     SingleCellExperiment,
