@@ -361,7 +361,7 @@ keep_DIU <- function(cluster_list, gene_tr_table){
   # filter clusters to keep only transcripts with multiple same-gene transcripts
   clusters_multi <- map(cluster_list, ~(.[. %in% multi_tr]))
 
-  message(paste("Isoforms clustered after coordination filter:",
+  message(paste("Isoforms clustered after >1 isoform/gene filter:",
                 unlist(clusters_multi) %>% length, sep = " "))
 
 
@@ -387,7 +387,7 @@ keep_DIU <- function(cluster_list, gene_tr_table){
   tr_ds.idx <- map(clusters_multi.gene, ~(which(. %in% names(genes_diu))))
   clusters_diu <- map2(clusters_multi, tr_ds.idx, ~(.x[.y]))
 
-  message(paste("Isoforms clustered after differential splicing filter:",
+  message(paste("Isoforms clustered after differential cluster assignment filter:",
                 unlist(clusters_diu) %>% length, sep = " "))
 
   return(clusters_diu)
