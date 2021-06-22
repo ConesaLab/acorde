@@ -832,6 +832,40 @@ to different clusters. Differential cluster assignment indicates different isofo
 usage in at least one cell type, and is therefore a straightforward way to call
 DIU when multiple cell groups are considered.
 
+![](../images/DIU-definition.png)
+
+To detect DIU genes, isoforms must be removed from clusters in the following
+cases: **1)** if these isoforms belong to genes that have a single isoform assigned 
+to clusters and **2)** if they belong to genes with two or more clustered isoforms
+that have no same-gene counterparts in any of the other clusters. Both filters
+can be applied running the `keep_DIU()` function in acorde:
+
+```{r}
+# remove isoforms from non-DIU genes
+clusters_diu <- keep_DIU(clusters_final.exp, gene_tr_table = gene_tr_ID)
+```
+
+To obtain a list of all DIU genes that have isoforms in our clusters, we simply
+need to use the `gene_tr_ID` table to translate transcript to gene IDs:
+
+```{r}
+# obtain gene ID-based clusters
+clusters_diu.gene <- map(clusters_diu, 
+                          ~gene_tr_ID[match(., 
+                                            gene_tr_ID$transcript_id),]$gene_id)
+
+# obtain list of DIU genes
+diu_genes <- unlist(clusters_diu.gene) %>% unique
+
+# total number of DIU genes:
+length(diu_genes)
+```
+
+In summary, we currently have clustered **7575 isoforms** into 
+**19 expression patterns** across the 7 cell types in the Tasic dataset, and 
+these isoforms belong to **2577 DIU genes**.
+
+
 
 
 
