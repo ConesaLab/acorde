@@ -311,8 +311,6 @@ expand_clusters <- function(data, isoform_col = NULL, id_table,
 
 
 
-#### FUNCTION TO FILTER CLUSTERS BY DS AND SPLICING COORDINATION #####
-
 #' @title Keep isoforms from genes with Differential Isoform Usage (DIU)
 #'
 #' @description Perform detection of genes with Differential Isoform Usage

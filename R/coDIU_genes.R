@@ -312,26 +312,3 @@ make_design <- function(pair, data, cluster_list, gene_tr_table, cell_types){
 
   return(fouriso_expr_long)
 }
-
-
-
-##### FUNCTION TO CREATE EXPRESSION MATRIX FOR A GENE PAIR ####
-# called internally by test_shared_genes to create one-line expression matrix
-# to test ct-cluster and ct-gene interactions via a glm approach
-# make_matrix <- function(data, design){
-#
-#   # create wide dataession matrix with sample IDs combining cell and transcript
-#   data <- data %>% filter(transcript_id %in% unique(design$transcript_id))
-#   data_long <- data %>% tidyr::gather(cell_id, expression, -transcript_id)
-#   data_wide <- data_long %>% tidyr::pivot_wider(names_from = c(transcript_id, cell_id),
-#                                                 values_from = expression)
-#
-#   # create sample names combining transcript and cell IDs
-#   design <- design %>% mutate(sample = paste(transcript_id, cell_id, sep = "_")) %>%
-#     select(sample, gene, cluster, cell_type)
-#
-#   # reorder columns in wide dataession matrix to match design matrix
-#   data_wide <- data_wide[,design$sample]
-#
-#   return(data_wide)
-# }
