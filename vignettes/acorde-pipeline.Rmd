@@ -866,6 +866,15 @@ In summary, we currently have clustered **7575 isoforms** into
 these isoforms belong to **2577 DIU genes**.
 
 
+# Detection of genes with co-Differential Isoform Usage (coDIU)
+
+We define co-Differential Isoform Usage (coDIU) as an isoform expression pattern
+in which a group of genes shows co-expression of their isoforms, but no 
+co-expression is detected when considering only gene-level expression. A coDIU
+situation between a pair of genes, *gene a* and *gene b*, is represented below:
+
+![](../images/coDIU-definition.png)
+
 
 
 
