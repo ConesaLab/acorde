@@ -875,7 +875,114 @@ situation between a pair of genes, *gene a* and *gene b*, is represented below:
 
 ![](../images/coDIU-definition.png)
 
+First, we recommend adjusting some global parmeters to allow heavy computation
+to take place (note that the exact value may depend on your system requirements):
 
+```{r, eval=FALSE}
+options(future.globals.maxSize = 768 * 1024^2)
+```
+
+
+Then, we will use the `find_shared_genes()` function in acorde to generate a list
+of potentially coDIU gene pairs, that is, genes that have at least two of their
+isoforms assigned to the same clusters, therefore showing isoform-level 
+co-expression across cell types. We often refer to these as "shared genes", given
+that they share isoforms across two or more clusters:
+
+```{r, eval=FALSE}
+# find shared gene pairs
+shared_pairs <- find_shared_genes(clusters_diu, gene_tr_table = gene_tr_ID)
+
+# show dimensions of results
+dim(shared_pairs)
+```
+
+However, clustering can allow expression pattern variability among cluster
+members, and sometimes isoforms in a cluster might not exactly reflect their 
+expression pattern. Especially when coDIU is detected between two clusters
+reflecting a closely-related pattern (for instance, similar expression except for
+one cell type), there may be some false-positives coDIU genes among those detected
+by `find_shared_genes()`.
+
+To control for this, acorde provides a statistical test for each potentially 
+coDIU gene pair, i.e. gene 1 and gene 2, for which isoforms were detected in two
+clusters, i.e. cluster 1 and cluster 2. We here test two different conditions for coDIU: 
+**a)** that the average profile across cell types of the two isoforms in cluster 
+1 is significantly different to the average profile of the two isoforms in
+cluster 2; and **b)** that the average profile of the two isoforms of gene 1
+is *not* different to the average profile of the two isoforms of gene 2. 
+
+For each pair of genes, the test will return two p-values, each corresponding 
+to one of the above-described questions:
+
+- *cluster:cell_type*: should be significant if **condition a** is fulfilled.
+- *gene:cell_type*: should **NOT** be significant if **condition b** is 
+satisifed.
+
+
+The test is implemented in the `test_shared_genes()` function, and can be run
+as follows:
+
+```{r, eval=FALSE}
+# test shared gene pairs
+pvalues <- test_shared_genes(tasic_sp, 
+                             cluster_list = clusters_diu, 
+                             shared_genes = shared_pairs, 
+                             gene_tr_table = gene_tr_ID, 
+                             id_table = id.df)
+
+# remove gene pairs that could not be tested (returns NA)
+test_success <- map_lgl(pvalues, is_tibble)
+shared_pairs <- shared_pairs[,test_success]
+
+# format ouptut after removing failed tests
+pvalue.df <- pvalues[test_success] %>% bind_rows
+
+# adjust the two sets of p-values
+pvalue.df$`cluster:cell_type` <- p.adjust(pvalue.df$`cluster:cell_type`, 
+                                          method = "BH")
+pvalue.df$`gene:cell_type` <- p.adjust(pvalue.df$`gene:cell_type`, 
+                                       method = "BH")
+```
+
+Now, we can filter the `shared_pairs` matrix to only keep genes that satisfy the
+two conditions for coDIU when tested with at least one other gene:
+
+```{r, eval=FALSE}
+# filter shared gene list to only keep significant interactions
+sig_pairs <- shared_pairs[,pvalue.df$`cluster:cell_type` < 0.05 &
+                              pvalue.df$`gene:cell_type` > 0.05]
+sig_all <- sig_pairs %>% as.character %>% unique
+```
+
+Finally, using the gene IDs in `sig_all`, we can now filter the clusters to only 
+include isoforms from significantly coDIU genes:
+
+```{r, eval=FALSE}
+# filter cluster lists
+clusters_diu.gene.sig <- map(clusters_coDS.gene, 
+                              enframe, name = NULL, value = "gene") %>%
+  map(~filter(., gene %in% sig_all))
+
+clusters_diu.sig <- map2(map(clusters_coDS.gene, 
+                              enframe, name = NULL, value = "gene"),
+                          map(clusters_coDS, enframe, name = NULL, value = "transcript"),
+                                 ~mutate(.y, gene = .x$gene)) %>%
+          map(~filter(., gene %in% sig_all) %>% select(transcript))
+```
+
+
+# Conclusion
+
+The final output of the acorde pipeline consists in:
+
+- **Isoform clusters** representing unique expression patterns across cell types.
+- A list of identifiers of both **DIU** and **coDIU genes**, which can then be
+used for functional characterization.
+
+More information about DIU and coDIU gene characterization and the type of 
+functional insights that can be obtained from the acorde output can be found
+in [Arzalluz-Luque et al.](https://www.biorxiv.org/content/10.1101/2021.05.07.441841v1).
 
 
 # References
