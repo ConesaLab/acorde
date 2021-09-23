@@ -9,6 +9,7 @@ cell_type_DE(
   mode = c("edgeR", "DESeq2", "both"),
   compute_weights = TRUE,
   AdjPvalue = NULL,
+  maxFC = NULL,
   offset = NULL
 )
 }
@@ -29,15 +30,22 @@ slot in the SCE object.}
 \item{AdjPvalue}{A numeric value. If provided, filtering of DE results by
 adjusted p-value is enabled.}
 
+\item{maxFC}{A numeric value. If provided, filtering of DE results by
+maximum fold-change (maxFC) across cell types is enabled. Note that FC filter
+is based on edgeR's output (FC between all conditions), and therefore this
+option requires modes \code{"edgeR"} or \code{"both"} to be enabled.}
+
 \item{offset}{Optionally, a matrix containing offset information to be
 considered for bias correction in edgeR and/or DESeq2 DE tests.}
 }
 \value{
-If \code{mode = "both"}, a named list containing the results (filtered
-or not, depending on whether \code{AdjPvalue} is provided) of testing
-Differential Expression using edgeR and DESeq2. If the \code{mode} argument
-was used to select only one method, the function returns a data.frame object
-containing the results table obtained by that method.
+If \code{mode = "both"}, a named list of length 2 containing the results
+(filtered or not, depending on whether \code{AdjPvalue} and \code{maxFC} are
+provided) of testing Differential Expression using edgeR and DESeq2. If
+\code{maxFC} is provided, columns \code{max_FC} and \code{max_log2FC} are added
+to the results tables. If the \code{mode} argument was used to select only
+one method, the function returns a data.frame object containing the results
+table obtained by that method.
 }
 \description{
 This function provides a wrapper to compute Differential

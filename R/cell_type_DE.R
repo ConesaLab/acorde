@@ -24,14 +24,20 @@
 #' slot in the SCE object.
 #' @param AdjPvalue A numeric value. If provided, filtering of DE results by
 #' adjusted p-value is enabled.
+#' @param maxFC A numeric value. If provided, filtering of DE results by
+#' maximum fold-change (maxFC) across cell types is enabled. Note that FC filter
+#' is based on edgeR's output (FC between all conditions), and therefore this
+#' option requires modes \code{"edgeR"} or \code{"both"} to be enabled.
 #' @param offset Optionally, a matrix containing offset information to be
 #' considered for bias correction in edgeR and/or DESeq2 DE tests.
 #'
-#' @return If \code{mode = "both"}, a named list containing the results (filtered
-#' or not, depending on whether \code{AdjPvalue} is provided) of testing
-#' Differential Expression using edgeR and DESeq2. If the \code{mode} argument
-#' was used to select only one method, the function returns a data.frame object
-#' containing the results table obtained by that method.
+#' @return If \code{mode = "both"}, a named list of length 2 containing the results
+#' (filtered or not, depending on whether \code{AdjPvalue} and \code{maxFC} are
+#' provided) of testing Differential Expression using edgeR and DESeq2. If
+#' \code{maxFC} is provided, columns \code{max_FC} and \code{max_log2FC} are added
+#' to the results tables. If the \code{mode} argument was used to select only
+#' one method, the function returns a data.frame object containing the results
+#' table obtained by that method.
 #'
 #' @references
 #' \insertRef{Robinson2009}{acorde}
@@ -43,7 +49,9 @@
 #' @export
 cell_type_DE <- function(data, mode = c("edgeR", "DESeq2", "both"),
                          compute_weights = TRUE,
-                         AdjPvalue = NULL, offset = NULL){
+                         AdjPvalue = NULL,
+                         maxFC = NULL,
+                         offset = NULL){
 
   mode <- match.arg(mode)
 
@@ -99,11 +107,45 @@ cell_type_DE <- function(data, mode = c("edgeR", "DESeq2", "both"),
 
     # if provided, filter by p-value threshold
     if(is.null(AdjPvalue) == FALSE){
-      edger_sig.tr <- filter(edger_results, padjFilter < AdjPvalue) %>% as_tibble()
+
+      message("Applying AdjPvalue filter...")
+
+      edger_sig.tr <- dplyr::filter(edger_results,
+                                    padjFilter < AdjPvalue) %>%
+        tibble::as_tibble()
+
     }else{
+
       message("Note: p-value threshold not provided, full edgeR results will be returned.
               To enable filtering, please set AdjPvalue")
       edger_sig.tr <- edger_results
+
+    }
+
+    # if provided, filter by FC threshold
+    if(is.null(maxFC) == FALSE){
+
+      message("Filtering DE transcripts by maximum fold-change between cell types...")
+
+      # compute maximum FC and log2FC
+      fc_edger <- edger_sig.tr %>%
+        dplyr::select(tidyselect::starts_with("logFC")) %>%
+        dplyr::rowwise() %>%
+        abs() %>%
+        dplyr::mutate(max_log2FC = max(dplyr::across(tidyselect::everything())),
+                      max_FC = 2^max_log2FC) %>%
+        dplyr::select(max_log2FC, max_FC)
+
+      # add fc to results
+      edger_sig.tr <- dplyr::bind_cols(edger_sig.tr, fc_edger)
+
+      # filter
+      edger_sig.tr <- dplyr::filter(edger_sig.tr,
+                                    max_FC > maxFC)
+
+    }else{
+      message("Note: maximum fold-change threshold not provided, results will not
+              be filtered by cell-type fold-change. To enable filtering, please set maxFC.")
     }
   }
 
@@ -130,16 +172,46 @@ cell_type_DE <- function(data, mode = c("edgeR", "DESeq2", "both"),
 
     # filter by p-value threshold
     if(is.null(AdjPvalue) == FALSE){
+
+      message("Applying AdjPvalue filter...")
+
       deseq_sig.tr <- deseq_results %>% rownames_to_column("transcript") %>% as_tibble %>%
         filter(padj < AdjPvalue)
+
     }else{
+
       message("Note: p-value threshold not provided, full DESeq2 results will be returned.
               To enable filtering, please set AdjPvalue")
       deseq_sig.tr <- deseq_results
+
     }
 
+    # filter by FC threshold
+    if(is.null(maxFC) == FALSE && mode == "both"){
+
+      # compute maximum FC and log2FC
+      fc_deseq <- deseq_sig.tr %>%
+        dplyr::select(starts_with("logFC")) %>%
+        dplyr::rowwise() %>%
+        abs() %>%
+        dplyr::mutate(max_log2FC = max(dplyr::across(tidyselect::everything())),
+                      max_FC = 2^max_log2FC) %>%
+        dplyr::select(max_log2FC, max_FC)
+
+      # add fc to results
+      deseq_sig.tr <- dplyr::bind_cols(deseq_sig.tr, fc_deseq)
+
+      # filter
+      deseq_sig.tr <- dplyr::filter(deseq_sig.tr,
+                                    max_FC > maxFC)
+
+    }else{
+      message("Note: maximum fold-change threshold not provided, results will not
+              be filtered by cell-type fold-change. To enable filtering, please set maxFC.")
+    }
   }
 
+  message(paste0("Finished running DE analysis with mode = ", mode, "."))
 
   # OUTPUT
   if(mode == "both"){
