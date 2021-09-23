@@ -18,8 +18,8 @@ match column (i.e. cell) order in \code{data}.}
 
 \item{ct_proportion}{A numeric indicating the minimum proportion of cells with
 non-zero expression that will be allowed per cell type. Isoforms with a non-zero
-value proportion above the threshold in at least one cell type will be flagged
-to be preserved. Defaults to 0.2 (i.e. 20\%).}
+value proportion below the threshold in all cell types will be flagged
+as sparse. Defaults to 0.2 (i.e. 20\%).}
 
 \item{isoform_col}{When a tibble is provided in \code{data}, a character object
 indicating the name of the column in which isoform IDs are specified.
@@ -27,10 +27,10 @@ Otherwise, isoform identifiers will be assumed to be defined as rownames,
 and this argument will not need to be provided.}
 }
 \value{
-A logical vector including one entry per isoform in \code{data}. Isoforms
-meeting the sparsity criteria will have a value of \code{TRUE}, and otherwise
-be labeled as \code{FALSE}. This logical vector can then be used to filter
-isoforms, i.e. the rows in \code{data}.
+A \code{tibble} containing two columns, the first one including
+transcript IDs, and the second containing logical values specifying whether
+the isoform was flagged as sparse (considering the provided threshold of
+cell type proportion with non-zero expression).
 }
 \description{
 For convenience, \code{acorde} includes a function to assist

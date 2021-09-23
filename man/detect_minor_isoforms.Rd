@@ -28,7 +28,8 @@ correspondence.}
 
 \item{gene_expr_proportion}{A numeric value indicating the mean gene-relative
 expression threshold that will be used to detect minor isoforms across cell
-types.}
+types. Defaults to 0.2 (i.e. mean 20\% of the gene's total expression in at
+least one cell type).}
 
 \item{isoform_col}{When a tibble is provided in \code{data}, a character object
 indicating the name of the column in which isoform IDs are specified.

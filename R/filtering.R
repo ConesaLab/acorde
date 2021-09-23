@@ -22,39 +22,49 @@
 #'
 #' @param ct_proportion A numeric indicating the minimum proportion of cells with
 #' non-zero expression that will be allowed per cell type. Isoforms with a non-zero
-#' value proportion above the threshold in at least one cell type will be flagged
-#' to be preserved. Defaults to 0.2 (i.e. 20\%).
+#' value proportion below the threshold in all cell types will be flagged
+#' as sparse. Defaults to 0.2 (i.e. 20\%).
 #'
 #' @param isoform_col When a tibble is provided in \code{data}, a character object
 #' indicating the name of the column in which isoform IDs are specified.
 #' Otherwise, isoform identifiers will be assumed to be defined as rownames,
 #' and this argument will not need to be provided.
 #'
-#' @return A logical vector including one entry per isoform in \code{data}. Isoforms
-#' meeting the sparsity criteria will have a value of \code{TRUE}, and otherwise
-#' be labeled as \code{FALSE}. This logical vector can then be used to filter
-#' isoforms, i.e. the rows in \code{data}.
+#' @return A \code{tibble} containing two columns, the first one including
+#' transcript IDs, and the second containing logical values specifying whether
+#' the isoform was flagged as sparse (considering the provided threshold of
+#' cell type proportion with non-zero expression).
 #'
 #' @export
 detect_sparse <- function(data, id_table, ct_proportion = 0.2, isoform_col = NULL){
 
   # handle rownames
-  if(is.null(rownames) == FALSE){
-    data <- data %>% as.data.frame %>% column_to_rownames(isoform_col)
+  if(is.null(isoform_col) == TRUE){
+    data <- data %>% tibble::rownames_to_column("transcript")
+  }else{
+    data <- data %>% dplyr::rename(transcript = isoform_col)
   }
 
-  # test number of zeros in each cell type
-  split <- split(data %>% t %>% as.data.frame, id_table$cell_type)
-  test_zero <- map(split, ~(. > 0))
+  # create long-formatted matrix
+  data_long <- data %>%
+    tidyr::pivot_longer(-transcript,
+                        names_to = "cell", values_to = "expression") %>%
+    dplyr::left_join(cell_types, by = "cell") %>%
+    select(-cell)
 
-  # compare to cell type proportion threshold
-  lgl <- map(test_zero, ~(colSums(.) >= nrow(.)*ct_proportion))
-  allct_lgl <- bind_rows(lgl)
+  # compute proportion of zeros per cell type
+  expr_proportion <- data_long %>%
+    dplyr::mutate(non_zero = dplyr::if_else(expression > 0,
+                                            true = 1, false = 0)) %>%
+    dplyr::group_by(transcript, cell_type) %>%
+    dplyr::summarize(expr_proportion = sum(non_zero)/n())
 
-  # no. of non-zero values should be higher than proportion in at least one cell type
-  final_lgl <- rowSums(allct_lgl) >= 1
+  # detect whether transcripts are sparser than threshold
+  sparse_df <- expr_proportion %>%
+    dplyr::group_by(transcript) %>%
+    dplyr::summarize(sparse = any(expr_proportion > ct_proportion))
 
-  return(final_lgl)
+  return(sparse_df)
 }
 
 
