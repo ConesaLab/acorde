@@ -191,7 +191,7 @@ cell_type_DE <- function(data, mode = c("edgeR", "DESeq2", "both"),
 
       # compute maximum FC and log2FC
       fc_deseq <- deseq_sig.tr %>%
-        dplyr::select(starts_with("logFC")) %>%
+        dplyr::select(tidyselect::starts_with("logFC")) %>%
         dplyr::rowwise() %>%
         abs() %>%
         dplyr::mutate(max_log2FC = max(dplyr::across(tidyselect::everything())),
