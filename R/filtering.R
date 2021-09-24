@@ -164,3 +164,100 @@ detect_minor_isoforms <- function(data, id_table,
 
 
 
+#' @title Filter isoforms by absolute expression level across cell types
+#'
+#' @param data A data.frame or tibble object including isoforms as rows and cells as columns.
+#' Isoform IDs can be included as row names (data.frame) or as an additional column (tibble).
+#'
+#' @param id_table A data frame including two columns named \code{cell} and \code{cell_type},
+#' in which correspondence between cell ID and cell type should be
+#' provided. The number of rows should be equal to the total number of
+#' cell columns in \code{data}, and the order of the \code{cell} column should
+#' match column (i.e. cell) order in \code{data}.
+#'
+#' @param mean_counts A numeric value indicating the mean expression
+#' threshold used to flag an isoform as lowly expressed. Defaults to 10 counts,
+#' i.e. all isoforms with mean expression below 10 counts in all cell types will
+#' be reported as lowly expressed.
+#'
+#' @param median_counts A numeric value supplying a median expression threshold.
+#' If provided, will override \code{mean_counts}, and the median expression of
+#' the transcripts across cell types will be used to flag low expression.
+#'
+#' @param expressed_only Logical. When \code{TRUE}, zero-expression cells will
+#' not be considered to compute mean/median cell type expression. Transcripts
+#' will therefore be flagged based solely on their count no. across cells
+#' where they are expressed.
+#'
+#' @param isoform_col When a tibble is provided in \code{data}, a character object
+#' indicating the name of the column in which isoform IDs are specified.
+#' Otherwise, isoform identifiers will be assumed to be defined as rownames,
+#' and this argument will not need to be provided.
+#'
+#' @return A \code{tibble} containing two columns, the first one including
+#' transcript IDs, and the second containing logical values specifying whether
+#' the isoform was flagged as lowly expressed (considering the provided mean
+#' or median expression threshold).
+#'
+#' @export
+detect_low_expression <- function(data, id_table,
+                                  mean_counts = 10,
+                                  median_counts = NULL,
+                                  expressed_only = TRUE,
+                                  isoform_col = NULL){
+
+  # handle rownames
+  if(is.null(isoform_col) == TRUE){
+    data <- data %>% tibble::rownames_to_column("transcript")
+  }else{
+    data <- data %>% dplyr::rename(transcript = isoform_col)
+  }
+
+  # create long-formatted matrix
+  data_long <- data %>%
+    tidyr::pivot_longer(-transcript,
+                        names_to = "cell", values_to = "expression") %>%
+    dplyr::left_join(cell_types, by = "cell")
+
+  # compute mean counts per cell type
+  if(expressed_only == TRUE){
+
+    # compute mean in expressed cells
+    data_long <- data_long %>%
+      dplyr::filter(expression > 0)
+
+  }
+
+  # compute mean in expressed cells
+  data_summary <- data_long %>%
+    dplyr::group_by(transcript, cell_type) %>%
+    dplyr::summarize(mean = mean(expression),
+                     median = median(expression))
+
+  # compute max mean (expressed only)
+  data_summary.max <- data_summary %>%
+    dplyr::summarize(max_mean = max(mean),
+                     max_median = max(median))
+
+
+  # generate result by threshold
+
+  # if median-dependent threshold not provided, use mean (default)
+  if(is.null(median_counts) == TRUE){
+
+    low_df <- data_summary.max %>%
+      dplyr::mutate(low_expr = max_mean < mean_counts) %>%
+      select(transcript, low_expr)
+
+  }else{
+
+    low_df <- data_summary.max %>%
+      dplyr::mutate(low_expr, max_median < median_counts)
+  }
+
+  return(low_df)
+
+}
+
+
+
