@@ -49,7 +49,7 @@ detect_sparse <- function(data, id_table, ct_proportion = 0.2, isoform_col = NUL
   data_long <- data %>%
     tidyr::pivot_longer(-transcript,
                         names_to = "cell", values_to = "expression") %>%
-    dplyr::left_join(cell_types, by = "cell") %>%
+    dplyr::left_join(id_table, by = "cell") %>%
     select(-cell)
 
   # compute proportion of zeros per cell type
