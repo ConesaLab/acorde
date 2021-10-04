@@ -62,7 +62,7 @@ detect_sparse <- function(data, id_table, ct_proportion = 0.2, isoform_col = NUL
   # detect whether transcripts are sparser than threshold
   sparse_df <- expr_proportion %>%
     dplyr::group_by(transcript) %>%
-    dplyr::summarize(sparse = any(expr_proportion > ct_proportion))
+    dplyr::summarize(above_ct_proportion = any(expr_proportion > ct_proportion))
 
   return(sparse_df)
 }
