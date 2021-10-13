@@ -122,7 +122,7 @@ detect_minor_isoforms <- function(data, id_table,
   data_long <- data %>%
     tidyr::pivot_longer(-transcript,
                         names_to = "cell", values_to = "expression") %>%
-    dplyr::left_join(cell_types, by = "cell")
+    dplyr::left_join(id_table, by = "cell")
 
   # add gene ID
   data_long <- data_long %>%
@@ -217,7 +217,7 @@ detect_low_expression <- function(data, id_table,
   data_long <- data %>%
     tidyr::pivot_longer(-transcript,
                         names_to = "cell", values_to = "expression") %>%
-    dplyr::left_join(cell_types, by = "cell")
+    dplyr::left_join(id_table, by = "cell")
 
   # compute mean counts per cell type
   if(expressed_only == TRUE){
