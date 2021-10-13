@@ -23,7 +23,7 @@ cell columns in \code{data}, and the order of the \code{cell} column should
 match column (i.e. cell) order in \code{data}.}
 
 \item{gene_tr_table}{A data.frame or tibble containing two columns
-named \code{transcript_id} and \code{gene_id}, indicating gene-isoform
+named \code{transcript} and \code{gene}, indicating gene-isoform
 correspondence.}
 
 \item{gene_expr_proportion}{A numeric value indicating the mean gene-relative

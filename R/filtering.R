@@ -87,7 +87,7 @@ detect_sparse <- function(data, id_table, ct_proportion = 0.2, isoform_col = NUL
 #' match column (i.e. cell) order in \code{data}.
 #'
 #' @param gene_tr_table A data.frame or tibble containing two columns
-#' named \code{transcript_id} and \code{gene_id}, indicating gene-isoform
+#' named \code{transcript} and \code{gene}, indicating gene-isoform
 #' correspondence.
 #'
 #' @param gene_expr_proportion A numeric value indicating the mean gene-relative
