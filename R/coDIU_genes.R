@@ -16,6 +16,11 @@
 #' @param gene_tr_table A data.frame or tibble object containing two columns
 #' named \code{transcript_id} and \code{gene_id}, indicating gene-isoform
 #' correspondence.
+#' @param parallel A logical. When \code{TRUE}, parallelization is enabled.
+#' The \code{\link{future_map_lgl}} function in the \code{furrr} is used.
+#' @param t An integer indicating the number of threads to be used for
+#' parallelization. This will be passed to the \code{\link{plan}} function from
+#' the \code{future} package via the \code{workers} argument.
 #'
 #' @details We define coordinated splicing patterns as a situation where
 #' post-transcriptional regulation, defined by isoform expression,
@@ -39,7 +44,8 @@
 #' \insertRef{Arzalluz-Luque2021}{acorde}
 #'
 #' @export
-find_shared_genes <- function(cluster_list, gene_tr_table){
+find_shared_genes <- function(cluster_list, gene_tr_table,
+                              parallel = TRUE, t = 4){
 
   # convert clusters to gene IDs
   cluster_list.gene <- map(cluster_list,
@@ -53,7 +59,12 @@ find_shared_genes <- function(cluster_list, gene_tr_table){
   colnames(gcomb) <- paste0("pair", seq(1, ncol(gcomb)))
 
   message("Finding co-spliced gene pairs across clusters...")
-  check <- future_map_lgl(as_tibble(gcomb), check_gene_pair, gene_occurrence, .progress = TRUE)
+
+  if(parallel == TRUE){
+    future::plan(multisession, workers = t)
+  }
+  check <- future_map_lgl(as_tibble(gcomb), check_gene_pair,
+                          gene_occurrence)
 
   # keep pairs with coincidence
   pairs <- gcomb[,check]
@@ -114,6 +125,13 @@ check_gene_pair <- function(pair, intersections){
 #' Otherwise, isoform identifiers will be assumed to be defined as rownames,
 #' and this argument will not need to be provided.
 #'
+#' @param parallel A logical. When \code{TRUE}, parallelization is enabled.
+#' The \code{\link{future_map_lgl}} function in the \code{furrr} is used.
+#'
+#' @param t An integer indicating the number of threads to be used for
+#' parallelization. This will be passed to the \code{\link{plan}} function from
+#' the \code{future} package via the \code{workers} argument.
+#'
 #' @details A set of \strong{potentially co-DIU genes} will have at least two of their
 #' isoforms assigned to the same clusters, i.e. show detectable
 #' isoform-level co-expression. However, since clustering allows isoforms
@@ -166,7 +184,8 @@ check_gene_pair <- function(pair, intersections){
 #'
 #' @export
 test_shared_genes <- function(data, cluster_list, shared_genes, gene_tr_table,
-                              id_table, isoform_col = NULL){
+                              id_table, isoform_col = NULL,
+                              parallel = TRUE, t = 4){
 
   # handle rownames and data type
   if(is.null(isoform_col) == TRUE){
@@ -177,6 +196,10 @@ test_shared_genes <- function(data, cluster_list, shared_genes, gene_tr_table,
   pair_seq <- seq(1, ncol(shared_genes))
 
   # run ANOVA test for each gene pair with model fit and test error handling
+  if(parallel == TRUE){
+    future::plan(multisession, workers = t)
+  }
+
   pvalues <- future_map(pair_seq,
                         ~tryCatch(make_test(shared_genes[,.],
                                      data, cluster_list, gene_tr_table, id_table$cell_type),

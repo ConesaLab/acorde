@@ -4,7 +4,7 @@
 \alias{find_shared_genes}
 \title{Detect shared genes for co-Differential Isoform Usage analysis}
 \usage{
-find_shared_genes(cluster_list, gene_tr_table)
+find_shared_genes(cluster_list, gene_tr_table, parallel = TRUE, t = 4)
 }
 \arguments{
 \item{cluster_list}{A list of character vectors containing isoform IDs.
@@ -13,6 +13,13 @@ Each element of the list represents a cluster of isoforms.}
 \item{gene_tr_table}{A data.frame or tibble object containing two columns
 named \code{transcript_id} and \code{gene_id}, indicating gene-isoform
 correspondence.}
+
+\item{parallel}{A logical. When \code{TRUE}, parallelization is enabled.
+The \code{\link{future_map_lgl}} function in the \code{furrr} is used.}
+
+\item{t}{An integer indicating the number of threads to be used for
+parallelization. This will be passed to the \code{\link{plan}} function from
+the \code{future} package via the \code{workers} argument.}
 }
 \value{
 A matrix containing two rows and as many columns as potentially

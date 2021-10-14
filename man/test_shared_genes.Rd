@@ -10,7 +10,9 @@ test_shared_genes(
   shared_genes,
   gene_tr_table,
   id_table,
-  isoform_col = NULL
+  isoform_col = NULL,
+  parallel = TRUE,
+  t = 4
 )
 }
 \arguments{
@@ -39,6 +41,13 @@ match column (i.e. cell) order in \code{data}.}
 object indicating the name of the column where isoform IDs are specified.
 Otherwise, isoform identifiers will be assumed to be defined as rownames,
 and this argument will not need to be provided.}
+
+\item{parallel}{A logical. When \code{TRUE}, parallelization is enabled.
+The \code{\link{future_map_lgl}} function in the \code{furrr} is used.}
+
+\item{t}{An integer indicating the number of threads to be used for
+parallelization. This will be passed to the \code{\link{plan}} function from
+the \code{future} package via the \code{workers} argument.}
 }
 \value{
 A list containing one \code{tibble} per tested gene pair, as generated
