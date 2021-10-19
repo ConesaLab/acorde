@@ -7,9 +7,9 @@
 
 #' @title Scale single-cell expression data for cluster visualization
 #'
-#' @description This function performs \strong{range scaling} on isoform-level
+#' @description This function performs \strong{scaling} on isoform-level
 #' single-cell counts to assist visualization of isoform clusters obtained with
-#' \code{acorde}
+#' \code{acorde}.
 #'
 #' @param data A data.frame or tibble including isoforms as rows and cells
 #' as columns. Isoform IDs can be included as row names (data.frame) or as an
@@ -20,38 +20,66 @@
 #' Otherwise, isoform identifiers will be assumed to be defined as rownames,
 #' and this argument will not need to be provided.
 #'
+#' @param method Character. Should be one of \code{"range"} (default)
+#' and \code{"classic"}.
+#'
 #' @details The purpose of scaling is to be able to jointly visualize isoform
 #' expression trends for all members of a cluster, independently of each isoform's
 #' absolute expression level.
 #'
 #' For each isoform, counts are first \strong{centered} by substracting the isoform mean
-#' across all cell types. Then, the \strong{expression range} is computed as the difference
-#' between the maximum and minimum count values of the isoform. Of note, this
-#' range is often equivalent to the maximum counts, since most isoforms show
-#' minimum count values of zero. \strong{Scaled} counts are then computed by diving centered
-#' counts by the expression range.
+#' across all cell types. If \code{method = "range"} (default), the centered values
+#' are then scaled by the expression range. An isoform's \strong{expression range}
+#' is computed as the difference between the maximum and minimum count values of
+#' the isoform. Of note, this range is often equivalent to the maximum counts,
+#' since most isoforms show minimum count values of zero. Alternatively, if
+#' \code{method = "classic"} is selected, centered expression values are scaled
+#' by the transcript's standard deviation across all cells.
 #'
 #' @return A data.frame containing the scaled counts, with cell IDs as column
 #' names and isoform IDs as row names.
 #'
 #' @export
-scale_range <- function(data, isoform_col = NULL){
+scale_isoforms <- function(data, isoform_col = NULL,
+                           method = c("range", "classic")){
+
+  # match method argument
+  method <- match.arg(method)
 
   # handle rownames
   if(is.null(isoform_col) == FALSE){
     data <- column_to_rownames(data, isoform_col)
   }
 
-  # scale trancsript expression
+  # compute scaling metrics
   tr_center <- apply(data, 1, mean)
 
-  tr_max <- apply(data, 1, max)
-  tr_min <- apply(data, 1, min)
-  tr_range <- tr_max - tr_min
+    # range scaling
+    tr_max <- apply(data, 1, max)
+    tr_min <- apply(data, 1, min)
+    tr_range <- tr_max - tr_min
 
-  data_scaled <- apply(data, 2, function(x) (x - tr_center)/tr_range)
+    # classic scaling
+    tr_sd <- apply(data, 1, sd)
 
-  return(data_scaled %>% as.data.frame)
+  # scale
+  if(method == "classic"){
+    data_scaled <- apply(data, 2, function(x) (x - tr_center)/tr_sd)
+  }else if(method == "range"){
+    data_scaled <- apply(data, 2, function(x) (x - tr_center)/tr_range)
+  }
+
+  # format output as tibble with no rownames
+  if(is.null(isoform_col) == TRUE){
+    isoform_col <- "transcript"
+  }
+
+  data_scaled <- data_scaled %>%
+    as.data.frame %>%
+    tibble::rownames_to_column(isoform_col) %>%
+    tibble::as_tibble()
+
+  return(data_scaled)
 }
 
 
