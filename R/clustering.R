@@ -108,7 +108,7 @@ cluster_isoforms <- function(cor_matrix, deepSplit = 3, pamStage = FALSE,
 #'
 #' @param method Character indicating a co-expression method to use for merging
 #' similar clusters. Should be one of \code{percentile, pearson, spearman,
-#' zi_kendall, rho} (see details).
+#' zi_kendall, rho} (see details). Percentile correlation is used by default.
 #'
 #' @param dynamic A logical. If \code{TRUE}, merge will be performed
 #' via dynamic hierarchical clustering. Defaults to \code{FALSE}.
@@ -194,6 +194,9 @@ merge_clusters <- function(data, isoform_col = NULL, id_table,
                                       "rho", "zi_kendall"),
                            height_cutoff = 0.2,
                            cutree_no = NULL, ...){
+
+  # detect method argument
+  method <- match.arg(method)
 
   if(method == "percentile"){
 

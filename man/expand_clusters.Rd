@@ -51,7 +51,7 @@ required to assign an unclustered isoform to a cluster.}
 
 \item{method}{Character indicating a co-expression method to use for merging
 similar clusters. Should be one of \code{percentile, pearson, spearman,
-zi_kendall, rho} (see details).}
+zi_kendall, rho} (see details). Percentile correlation is used by default.}
 }
 \value{
 A list containing expanded clusters, where each element will include

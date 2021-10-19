@@ -44,7 +44,7 @@ via dynamic hierarchical clustering. Defaults to \code{FALSE}.}
 
 \item{method}{Character indicating a co-expression method to use for merging
 similar clusters. Should be one of \code{percentile, pearson, spearman,
-zi_kendall, rho} (see details).}
+zi_kendall, rho} (see details). Percentile correlation is used by default.}
 
 \item{height_cutoff}{When \code{dynamic = FALSE}, a numeric value between
 0 and 1 to be supplied to \code{\link[stats]{cutree}} via the \code{h} argument.

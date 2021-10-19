@@ -148,7 +148,7 @@ single_cluster_filter <- function(cluster,
 #'
 #' @param method Character indicating a co-expression method to use for merging
 #' similar clusters. Should be one of \code{percentile, pearson, spearman,
-#' zi_kendall, rho} (see details).
+#' zi_kendall, rho} (see details). Percentile correlation is used by default.
 #'
 #' @details Correlation-based cluster expansion first requires cluster
 #' \emph{metatranscripts} to be calculated. A cluster's metatranscript
@@ -206,6 +206,9 @@ expand_clusters <- function(data, isoform_col = NULL, id_table,
                                        "rho", "zi_kendall")){
 
   message(paste("Expanding clusters using ", method, "correlation..."))
+
+  # detect method argument
+  method <- match.arg(method)
 
   if(method == "percentile"){
 
