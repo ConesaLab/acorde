@@ -11,7 +11,7 @@ keep_DIU(cluster_list, gene_tr_table)
 identifiers of the isoforms in a cluster.}
 
 \item{gene_tr_table}{A data.frame or tibble object containing two columns
-named \code{transcript_id} and \code{gene_id}, indicating gene-isoform
+named \code{transcript} and \code{gene}, indicating gene-isoform
 correspondence.}
 }
 \value{

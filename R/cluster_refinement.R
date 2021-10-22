@@ -229,20 +229,20 @@ expand_clusters <- function(data, isoform_col = NULL, id_table,
   }else if(method != "percentile"){
 
     if(is.null(isoform_col = TRUE)){
-      data <- data %>% as.data.frame %>% rownames_to_column("transcript_id")
+      data <- data %>% as.data.frame %>% rownames_to_column("transcript")
     }
 
     # get metatranscripts (mean expression of clusters)
     metatr.df <- map(cluster_list,
-                     ~(filter(data, transcript_id %in% .) %>%
-                         column_to_rownames("transcript_id") %>%
+                     ~(filter(data, transcript %in% .) %>%
+                         column_to_rownames("transcript") %>%
                          colMeans %>%
                          enframe(value = "cluster_mean", name = NULL))) %>%
       bind_cols
 
     # compute correlation of unclustered with metatranscripts
-    unclust_expr <- data %>% filter(transcript_id %in% unclustered) %>%
-      column_to_rownames("transcript_id") %>%
+    unclust_expr <- data %>% filter(transcript %in% unclustered) %>%
+      column_to_rownames("transcript") %>%
       as.matrix %>% t() %>% as.data.frame
 
     if(method == "rho"){
@@ -323,7 +323,7 @@ expand_clusters <- function(data, isoform_col = NULL, id_table,
 #' identifiers of the isoforms in a cluster.
 #'
 #' @param gene_tr_table A data.frame or tibble object containing two columns
-#' named \code{transcript_id} and \code{gene_id}, indicating gene-isoform
+#' named \code{transcript} and \code{gene}, indicating gene-isoform
 #' correspondence.
 #'
 #' @details In single-cell RNA-Seq data, we consider \strong{Differential Isoform Usage}
@@ -354,7 +354,7 @@ keep_DIU <- function(cluster_list, gene_tr_table){
   # split/group transcripts by gene IDs
   clustered_g <- split(clustered_tr,
                        gene_tr_table[match(clustered_tr,
-                                           gene_tr_table$transcript_id),]$gene_id)
+                                           gene_tr_table$transcript),]$gene)
   # count no. of transcripts per gene in the clusters
   ntr <- map_int(clustered_g, length)
   # find genes with > 1 isoform clustered
@@ -374,7 +374,7 @@ keep_DIU <- function(cluster_list, gene_tr_table){
   # convert clusters to gene IDs
   clusters_multi.gene <- map(clusters_multi,
                              ~(gene_tr_table[match(.,
-                                                   gene_tr_table$transcript_id),]$gene_id))
+                                                   gene_tr_table$transcript),]$gene))
 
   # find no. of clusters where each gene has isoforms
   gene_distribution <- map(clusters_multi.gene, ~(names(gmulti) %in% .)) %>%
