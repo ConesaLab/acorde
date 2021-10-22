@@ -49,7 +49,7 @@ find_shared_genes <- function(cluster_list, gene_tr_table,
 
   # convert clusters to gene IDs
   cluster_list.gene <- map(cluster_list,
-                           ~gene_tr_table[match(., gene_tr_table$transcript_id),]$gene_id)
+                           ~gene_tr_table[match(., gene_tr_table$transcript),]$gene)
 
   # find intersections with modified UpSetR fromList() function
   gene_occurrence <- fromList(cluster_list.gene)
@@ -233,7 +233,7 @@ test_shared_genes <- function(data, cluster_list, shared_genes, gene_tr_table,
 #' Each element of the list represents a cluster of isoforms.
 #'
 #' @param gene_tr_table A data.frame or tibble containing two columns
-#' named \code{transcript_id} and \code{gene_id}, indicating gene-isoform
+#' named \code{transcript} and \code{gene}, indicating gene-isoform
 #' correspondence.
 #'
 #' @param cell_types A character vector including cell type assignments for
@@ -289,7 +289,7 @@ make_test <- function(pair, data, cluster_list, gene_tr_table, cell_types){
 #' Each element of the list represents a cluster of isoforms.
 #'
 #' @param gene_tr_table A data.frame or tibble containing two columns
-#' named \code{transcript_id} and \code{gene_id}, indicating gene-isoform
+#' named \code{transcript} and \code{gene}, indicating gene-isoform
 #' correspondence.
 #'
 #' @param cell_types A character vector including cell type assignments for
@@ -303,7 +303,7 @@ make_design <- function(pair, data, cluster_list, gene_tr_table, cell_types){
 
   # remake gene_occurrence list
   # convert clusters to gene IDs
-  cluster_list.gene <- map(cluster_list, ~gene_tr_table[match(., gene_tr_table$transcript_id),]$gene_id)
+  cluster_list.gene <- map(cluster_list, ~gene_tr_table[match(., gene_tr_table$transcript),]$gene)
   # find intersections with modified UpSetR fromList() function
   gene_occurrence <- fromList(cluster_list.gene)
 
@@ -318,7 +318,7 @@ make_design <- function(pair, data, cluster_list, gene_tr_table, cell_types){
   # create factor df
       # make data frame with expression of gene pair transcripts
       fouriso_expr <- data %>% filter(transcript %in% tr)
-      fouriso_expr <- fouriso_expr[match(tr, fouriso_expr$transcript_id),]
+      fouriso_expr <- fouriso_expr[match(tr, fouriso_expr$transcript),]
       # add gene factor
       gene_factor <- factor(rep(seq(nrow(fouriso_expr)/2), 2))
       fouriso_expr <- mutate(fouriso_expr, gene = gene_factor)
@@ -327,7 +327,7 @@ make_design <- function(pair, data, cluster_list, gene_tr_table, cell_types){
       fouriso_expr <- mutate(fouriso_expr, cluster = cluster_factor)
       # long formatting
       fouriso_expr_long <- tidyr::gather(fouriso_expr, cell_id, expression,
-                                         -transcript_id, -gene, -cluster)
+                                         -transcript, -gene, -cluster)
       fouriso_expr_long <- mutate(fouriso_expr_long,
                                   cell_type = rep(cell_types,
                                                   each = nrow(fouriso_expr))) %>%

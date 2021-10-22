@@ -18,7 +18,7 @@ additional column (tibble).}
 Each element of the list represents a cluster of isoforms.}
 
 \item{gene_tr_table}{A data.frame or tibble containing two columns
-named \code{transcript_id} and \code{gene_id}, indicating gene-isoform
+named \code{transcript} and \code{gene}, indicating gene-isoform
 correspondence.}
 
 \item{cell_types}{A character vector including cell type assignments for
