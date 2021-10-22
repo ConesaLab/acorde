@@ -197,7 +197,7 @@ test_shared_genes <- function(data, cluster_list, shared_genes, gene_tr_table,
 
   # run ANOVA test for each gene pair with model fit and test error handling
   if(parallel == TRUE){
-    future::plan(multisession, workers = t)
+    future::plan("multisession", workers = t)
   }
 
   pvalues <- future_map(pair_seq,
