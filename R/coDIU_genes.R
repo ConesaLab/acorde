@@ -61,7 +61,7 @@ find_shared_genes <- function(cluster_list, gene_tr_table,
   message("Finding co-spliced gene pairs across clusters...")
 
   if(parallel == TRUE){
-    future::plan(multisession, workers = t)
+    future::plan("multisession", workers = t)
   }
   check <- future_map_lgl(as_tibble(gcomb), check_gene_pair,
                           gene_occurrence)
