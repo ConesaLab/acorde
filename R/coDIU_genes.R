@@ -190,6 +190,8 @@ test_shared_genes <- function(data, cluster_list, shared_genes, gene_tr_table,
   # handle rownames and data type
   if(is.null(isoform_col) == TRUE){
     data <- data %>% as.data.frame %>% rownames_to_column("transcript")
+  }else{
+    data <- data %>% dplyr::rename(transcript = isoform_col)
   }
 
   # create vector to iterate
