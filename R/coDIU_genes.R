@@ -283,7 +283,7 @@ make_test <- function(pair, data, cluster_list, gene_tr_table, cell_types){
     dplyr::select(transcript, cluster) %>%
     unique
 
-  tested_df <- dplyr::left_join(tested_df, gene_tr_ID,
+  tested_df <- dplyr::left_join(tested_df, gene_tr_table,
                          by = "transcript")
 
   # bind into named list
