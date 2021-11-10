@@ -25,17 +25,24 @@ correspondence.}
 the cell IDs in \code{data}.}
 }
 \value{
-A tibble containing two columns, \code{cluster:cell_type} and
-\code{gene:cell_type}, containing the p-value obtained in the likelihood ratio
-chi-square test (see \code{\link{test_shared_genes}}) for each of these two
-interactions.
+A named list containing two elements, \code{pvalue} and \code{test}:
+\enumerate{
+   \item \code{pvalue}: A tibble containing two columns, \code{cluster:cell_type} and
+   \code{gene:cell_type}, containing the p-value obtained in the likelihood ratio
+   chi-square test (see \code{\link{test_codiu_genes}}) for each of these two
+   interactions.
+
+   \item \code{test}: A tibble containing three columns, \code{transcript},
+   \code{cluster} and \code{gene}, each detailing the tested elements of the
+   co-DIU interaction.
+}
 }
 \description{
-This function is called iteratively by \code{\link{test_shared_genes}}
+This function is called iteratively by \code{\link{test_codiu_genes}}
 to test cluster-dependent expression for a single pair of candidate co-DIU genes.
 }
 \details{
-Arguments are passed from \code{\link{test_shared_genes}}.
+Arguments are passed from \code{\link{test_codiu_genes}}.
 }
 \references{
 \insertRef{Venables2002}{acorde}

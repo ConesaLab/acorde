@@ -29,11 +29,11 @@ A tibble, containing a long-form table with the required factors for
 GLM fitting and statistical testing.
 }
 \description{
-This function is used by \code{\link{test_shared_genes}} to
+This function is used by \code{\link{test_codiu_genes}} to
 create a design matrix for GLM fitting using information from a pair of co-DIU
 candidategenes, i.e. expression values of the gene's co-expressed isoforms,
 cell type labels for cells and cluster labels for isoforms.
 }
 \details{
-Arguments are passed from \code{\link{test_shared_genes}}.
+Arguments are passed from \code{\link{test_codiu_genes}}.
 }

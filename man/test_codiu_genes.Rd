@@ -25,7 +25,7 @@ Each element of the list represents a cluster of isoforms.}
 
 \item{shared_genes}{A two-row matrix containing \emph{n} candidate co-DIU
 gene pairs as column. Typically the result of running
-\code{\link{find_shared_genes}}.}
+\code{\link{find_codiu_genes}}.}
 
 \item{gene_tr_table}{A data.frame or tibble object containing two columns
 named \code{transcript_id} and \code{gene_id}, indicating gene-isoform
@@ -63,8 +63,11 @@ to control for untested gene pairs, but can easily be removed from the output.
 \description{
 Pairwise statistical testing of co-Differential Isoform Usage
 relationships. For a selected set of gene pairs showing co-expression of
-isoforms across clusters (see \code{\link{find_shared_genes}}), this
+isoforms across clusters (see \code{\link{find_codiu_genes}}), this
 function tests the significance of the detected co-DIU patterns.
+
+\strong{Warning:} this function may take a long time to run, especially if applied
+to all pairs of co-DIU genes returned by \code{\link{find_codiu_genes}}.
 }
 \details{
 A set of \strong{potentially co-DIU genes} will have at least two of their

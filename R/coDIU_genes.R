@@ -4,7 +4,7 @@
 #' @import tibble
 
 
-#' @title Detect shared genes for co-Differential Isoform Usage analysis
+#' @title Detect genes with co-Differential Isoform Usage
 #'
 #' @description This function reports pairs of genes that present co-expressed
 #' isoforms given a list of previously-detected isoform clusters.
@@ -75,7 +75,7 @@ find_codiu_genes <- function(cluster_list, gene_tr_table,
 
 #' @title Check isoform co-expression patterns for a gene pair across clusters
 #'
-#' @description This function is called internally by \code{\link{find_shared_genes}}
+#' @description This function is called internally by \code{\link{find_codiu_genes}}
 #' to iteratively check each gene pair for isoform co-expression.
 #'
 #' @param pair A character vector of length 2 containing gene IDs for a candidate
@@ -96,8 +96,11 @@ check_gene_pair <- function(pair, intersections){
 #'
 #' @description Pairwise statistical testing of co-Differential Isoform Usage
 #' relationships. For a selected set of gene pairs showing co-expression of
-#' isoforms across clusters (see \code{\link{find_shared_genes}}), this
+#' isoforms across clusters (see \code{\link{find_codiu_genes}}), this
 #' function tests the significance of the detected co-DIU patterns.
+#'
+#' \strong{Warning:} this function may take a long time to run, especially if applied
+#' to all pairs of co-DIU genes returned by \code{\link{find_codiu_genes}}.
 #'
 #' @param data A data.frame or tibble object including isoforms as rows and cells
 #' as columns. Isoform IDs can be included as row names (data.frame) or as an
@@ -108,7 +111,7 @@ check_gene_pair <- function(pair, intersections){
 #'
 #' @param shared_genes A two-row matrix containing \emph{n} candidate co-DIU
 #' gene pairs as column. Typically the result of running
-#' \code{\link{find_shared_genes}}.
+#' \code{\link{find_codiu_genes}}.
 #'
 #' @param gene_tr_table A data.frame or tibble object containing two columns
 #' named \code{transcript_id} and \code{gene_id}, indicating gene-isoform
@@ -202,7 +205,7 @@ test_codiu_genes <- function(data, cluster_list, shared_genes, gene_tr_table,
     future::plan("multisession", workers = t)
   }
 
-  pvalues <- future_map(pair_seq,
+  all_test_results <- future_map(pair_seq,
                         ~tryCatch(make_test(shared_genes[,.],
                                      data, cluster_list, gene_tr_table, id_table$cell_type),
                                   error = function(c){
@@ -213,7 +216,7 @@ test_codiu_genes <- function(data, cluster_list, shared_genes, gene_tr_table,
                                   NA
                            })
                  )
-  return(pvalues)
+  return(all_test_results)
 }
 
 
@@ -221,7 +224,7 @@ test_codiu_genes <- function(data, cluster_list, shared_genes, gene_tr_table,
 
 #' @title Perform co-DIU statistical test for one gene pair
 #'
-#' @description This function is called iteratively by \code{\link{test_shared_genes}}
+#' @description This function is called iteratively by \code{\link{test_codiu_genes}}
 #' to test cluster-dependent expression for a single pair of candidate co-DIU genes.
 #'
 #' @param pair A character vector of length 2 indicating the gene IDs of
@@ -241,12 +244,19 @@ test_codiu_genes <- function(data, cluster_list, shared_genes, gene_tr_table,
 #' @param cell_types A character vector including cell type assignments for
 #' the cell IDs in \code{data}.
 #'
-#' @details Arguments are passed from \code{\link{test_shared_genes}}.
+#' @details Arguments are passed from \code{\link{test_codiu_genes}}.
 #'
-#' @return A tibble containing two columns, \code{cluster:cell_type} and
-#' \code{gene:cell_type}, containing the p-value obtained in the likelihood ratio
-#' chi-square test (see \code{\link{test_shared_genes}}) for each of these two
-#' interactions.
+#' @return A named list containing two elements, \code{pvalue} and \code{test}:
+#' \enumerate{
+#'    \item \code{pvalue}: A tibble containing two columns, \code{cluster:cell_type} and
+#'    \code{gene:cell_type}, containing the p-value obtained in the likelihood ratio
+#'    chi-square test (see \code{\link{test_codiu_genes}}) for each of these two
+#'    interactions.
+#'
+#'    \item \code{test}: A tibble containing three columns, \code{transcript},
+#'    \code{cluster} and \code{gene}, each detailing the tested elements of the
+#'    co-DIU interaction.
+#' }
 #'
 #' @references
 #'
@@ -268,14 +278,26 @@ make_test <- function(pair, data, cluster_list, gene_tr_table, cell_types){
   pvalues <- tibble(adev["cluster:cell_type", "Pr(>Chisq)"], adev["gene:cell_type", "Pr(>Chisq)"])
   colnames(pvalues) <- c("cluster:cell_type", "gene:cell_type")
 
-  return(pvalues)
+  # add gene, transcript and cluster information
+  tested_df <- design %>%
+    dplyr::select(transcript, cluster) %>%
+    unique
+
+  tested_df <- dplyr::left_join(tested_df, gene_tr_ID,
+                         by = "transcript")
+
+  # bind into named list
+  test_result <- list(pvalues = pvalues,
+                      test = tested_df)
+
+  return(test_result)
 }
 
 
 
 #' @title Create design matrix for co-DIU test of a pair of genes
 #'
-#' @description This function is used by \code{\link{test_shared_genes}} to
+#' @description This function is used by \code{\link{test_codiu_genes}} to
 #' create a design matrix for GLM fitting using information from a pair of co-DIU
 #' candidategenes, i.e. expression values of the gene's co-expressed isoforms,
 #' cell type labels for cells and cluster labels for isoforms.
@@ -297,7 +319,7 @@ make_test <- function(pair, data, cluster_list, gene_tr_table, cell_types){
 #' @param cell_types A character vector including cell type assignments for
 #' the cell IDs in \code{data}.
 #'
-#' @details Arguments are passed from \code{\link{test_shared_genes}}.
+#' @details Arguments are passed from \code{\link{test_codiu_genes}}.
 #'
 #' @return A tibble, containing a long-form table with the required factors for
 #' GLM fitting and statistical testing.

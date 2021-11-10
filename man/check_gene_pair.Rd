@@ -18,6 +18,6 @@ A logical indicating whether the pair of genes under evaluation presents
 isoform co-expression across any of the analyzed clusters.
 }
 \description{
-This function is called internally by \code{\link{find_shared_genes}}
+This function is called internally by \code{\link{find_codiu_genes}}
 to iteratively check each gene pair for isoform co-expression.
 }

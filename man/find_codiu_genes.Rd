@@ -2,7 +2,7 @@
 % Please edit documentation in R/coDIU_genes.R
 \name{find_codiu_genes}
 \alias{find_codiu_genes}
-\title{Detect shared genes for co-Differential Isoform Usage analysis}
+\title{Detect genes with co-Differential Isoform Usage}
 \usage{
 find_codiu_genes(cluster_list, gene_tr_table, parallel = TRUE, t = 4)
 }
