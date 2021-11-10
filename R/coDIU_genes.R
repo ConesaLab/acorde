@@ -44,7 +44,7 @@
 #' \insertRef{Arzalluz-Luque2021}{acorde}
 #'
 #' @export
-find_shared_genes <- function(cluster_list, gene_tr_table,
+find_codiu_genes <- function(cluster_list, gene_tr_table,
                               parallel = TRUE, t = 4){
 
   # convert clusters to gene IDs
@@ -183,7 +183,7 @@ check_gene_pair <- function(pair, intersections){
 #' \insertRef{Fox2019}{acorde}
 #'
 #' @export
-test_shared_genes <- function(data, cluster_list, shared_genes, gene_tr_table,
+test_codiu_genes <- function(data, cluster_list, shared_genes, gene_tr_table,
                               id_table, isoform_col = NULL,
                               parallel = TRUE, t = 4){
 
