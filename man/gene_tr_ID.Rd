@@ -5,7 +5,7 @@
 \alias{gene_tr_ID}
 \title{Gene-isoform associations for the mouse neural long read transcriptome}
 \format{
-A tibble containing the columns \code{transcript_id} and \code{gene_id}.
+A tibble containing the columns \code{transcript} and \code{gene}.
 Isoform (i.e. transcript) identifiers correspond to those obtained during
 long read-transcriptome definition (see Arzalluz Luque et al.)
 }
