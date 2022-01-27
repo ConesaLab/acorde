@@ -146,6 +146,9 @@ single_cluster_filter <- function(cluster,
 #' @param expand_threshold A numeric value defining the minimum correlation
 #' required to assign an unclustered isoform to a cluster.
 #'
+#' @param allow_negative_cors. Logical. If set to \code{FALSE} (default),
+#' negative correlations will not be considered. Defaults to \code{TRUE}.
+#'
 #' @param method Character indicating a co-expression method to use for merging
 #' similar clusters. Should be one of \code{percentile, pearson, spearman,
 #' zi_kendall, rho} (see details). Percentile correlation is used by default.
@@ -202,6 +205,7 @@ expand_clusters <- function(data, isoform_col = NULL, id_table,
                             cluster_list, unclustered,
                             percentile_no = 10,
                             force_expand = TRUE, expand_threshold = NULL,
+                            allow_negative_cors = TRUE,
                             method = c("percentile", "pearson", "spearman",
                                        "rho", "zi_kendall")){
 
@@ -225,7 +229,10 @@ expand_clusters <- function(data, isoform_col = NULL, id_table,
     # calculate correlation between unclustered and metatranscripts
     unclust_percentiles <- percentiles[,unclustered]
     unclust_cor <- stats::cor(unclust_percentiles, metatr.df)
-    unclust_cor[unclust_cor < 0] <- 0
+
+    if(allow_negative_cors == FALSE){
+      unclust_cor[unclust_cor < 0] <- 0
+    }
 
   }else if(method != "percentile"){
 
@@ -252,7 +259,10 @@ expand_clusters <- function(data, isoform_col = NULL, id_table,
       # use dismay function to compute rho
       unclust_cor <- dismay::dismay(mat, metric = "rho_p", select = colnames(mat))
       unclust_cor <- unclust_cor[colnames(unclust_expr), colnames(metatr.df)]
-      unclust_cor[unclust_cor < 0] <- 0
+
+      if(allow_negative_cors == FALSE){
+        unclust_cor[unclust_cor < 0] <- 0
+      }
 
     }else if(method == "zi_kendall"){
       mat <- bind_cols(metatr.df, unclust_expr) %>% as.matrix()
@@ -260,11 +270,17 @@ expand_clusters <- function(data, isoform_col = NULL, id_table,
       # use dismay function to compute zero-inflated kendall cor
       unclust_cor <- dismay::dismay(mat, metric = "zi_kendall")
       unclust_cor <- unclust_cor[colnames(unclust_expr), colnames(metatr.df)]
-      unclust_cor[unclust_cor < 0] <- 0
+
+      if(allow_negative_cors == FALSE){
+        unclust_cor[unclust_cor < 0] <- 0
+      }
 
     }else{
       unclust_cor <- stats::cor(unclust_expr, metatr.df, method = method)
-      unclust_cor[unclust_cor < 0] <- 0
+
+      if(allow_negative_cors == FALSE){
+        unclust_cor[unclust_cor < 0] <- 0
+      }
     }
   }
 

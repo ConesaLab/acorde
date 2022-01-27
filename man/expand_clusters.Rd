@@ -13,6 +13,7 @@ expand_clusters(
   percentile_no = 10,
   force_expand = TRUE,
   expand_threshold = NULL,
+  allow_negative_cors = TRUE,
   method = c("percentile", "pearson", "spearman", "rho", "zi_kendall")
 )
 }
@@ -52,6 +53,9 @@ required to assign an unclustered isoform to a cluster.}
 \item{method}{Character indicating a co-expression method to use for merging
 similar clusters. Should be one of \code{percentile, pearson, spearman,
 zi_kendall, rho} (see details). Percentile correlation is used by default.}
+
+\item{allow_negative_cors.}{Logical. If set to \code{FALSE} (default),
+negative correlations will not be considered. Defaults to \code{TRUE}.}
 }
 \value{
 A list containing expanded clusters, where each element will include
