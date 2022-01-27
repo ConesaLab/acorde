@@ -644,7 +644,7 @@ In this manner, we can better evaluate similarities among cluster members, and
 see whether the patterns represented by clusters are truly distinct or still 
 contain redundancies.
 
-```{r, fig.width=14, fig.height=20}
+```{r, fig.width=14, fig.height=16}
 # compute cluster mean and standard deviations
 patterns_merged <- map(clusters_merged,
                        ~calculate_cluster_profile(tasic_scaled,
@@ -787,7 +787,7 @@ For this reason, there may still be some cluster profiles that remain highly sim
 To remove these redundancies, we run `merge_clusters()` again with `dynamic = FALSE`
 and similar parameters:
 
-```{r, fig.width=14, fig.height=16}
+```{r, fig.width=16, fig.height=16}
 # merge
 merge_output_final <- merge_clusters(tasic_sp, id_table = id_table,
                                cluster_list = clusters_merged.expanded,
@@ -888,7 +888,7 @@ situation between a pair of genes, *gene a* and *gene b*, is represented below:
 First, we recommend adjusting some global parameters to allow heavy computation
 to take place (note that the exact value may depend on your system requirements):
 
-```{r, eval=FALSE}
+```{r, eval = FALSE}
 options(future.globals.maxSize = 768 * 1024^2)
 ```
 
@@ -899,7 +899,7 @@ isoforms assigned to the same clusters, therefore showing isoform-level
 co-expression across cell types. We often refer to these as "shared genes", given
 that they share isoforms across two or more clusters:
 
-```{r, eval=FALSE}
+```{r, eval = FALSE}
 # find shared gene pairs
 shared_pairs <- find_codiu_genes(clusters_diu, gene_tr_table = gene_tr_ID)
 
@@ -933,7 +933,7 @@ satisifed.
 The test is implemented in the `test_codiu_genes()` function, and can be run
 as follows (set `t` and `parallel = TRUE` -default- for parallel computation):
 
-```{r, eval=FALSE}
+```{r, eval = FALSE}
 # test shared gene pairs
 codiu_test <- test_codiu_genes(tasic_sp,
                                isoform_col = "transcript_id",
@@ -954,7 +954,7 @@ pvalue.df$`gene:cell_type` <- p.adjust(pvalue.df$`gene:cell_type`, method = "BH"
 Now, we can filter the `shared_pairs` matrix to only keep genes that satisfy the
 two conditions for coDIU when tested with at least one other gene:
 
-```{r, eval=FALSE}
+```{r, eval = FALSE}
 # filter shared gene list to only keep significant interactions
 sig_pairs <- shared_pairs[,pvalue.df$`cluster:cell_type` < 0.05 &
                               pvalue.df$`gene:cell_type` > 0.05]
@@ -965,7 +965,7 @@ Finally, using the gene IDs in `sig_all`, we can now filter the clusters to only
 include isoforms from significantly coDIU genes, and generate a list of clusters
 with coDIU gene IDs:
 
-```{r, eval=FALSE}
+```{r, eval = FALSE}
 # filter clusters to only include isoforms from coDIU genes
 keep_coDIU <- clusters_DIU.gene %>% map(~(. %in% sig_all))
 clusters_coDIU <- map2(clusters_DIU, keep_coDIU, ~(.x[.y]))
@@ -1014,7 +1014,7 @@ tappAS does not implement single-cell dedicated analysis methods.
 
 Using the `metadata` table, a **tappAS design file** can be generated as follows:
 
-```{r, eval=FALSE}
+```{r, eval = FALSE}
 # create design table from metadata
 design <- metadata %>% 
   select(run, cell_type) %>%
@@ -1033,7 +1033,7 @@ write_tsv(design_sub, "tappas_design.tsv")
 
 To generate an **expression matrix** for tappAS, run:
 
-```{r, eval=FALSE}
+```{r, eval = FALSE}
 # create matrix with samples in design file
 matrix_sp <- tasic_sp %>%
   select(transcript, all_of(design_sub$sample)) %>% 
@@ -1057,7 +1057,7 @@ neuron and neuron-oligo clusters(i.e. clusters 1, 4 and 14). This list was used
 as test list for Functional Enrichment of GO terms, and can be generated using the `fromList()`function (modified from the UpSetR package), which generates a binary 
 occurrence table indicating the clusters in which each coDIU gene has isoforms:
 
-```{r, eval=FALSE}
+```{r, eval = FALSE}
 # create occurrence table
 gene_occurrence <- acorde::fromList(clusters_coDIU.gene) %>%
   rownames_to_column("gene")
@@ -1088,7 +1088,7 @@ this would be the list used to create a project including only isoforms from
 clusters 1, 4 and 14; in order to perform the Functional Diversity Analysis 
 in our neuron-oligo cluster results section:
 
-```{r}
+```{r, eval = FALSE}
 # select transcripts from shared genes in clusters
 tr_clust.idx <- map(clust_select,
                     ~which(clusters_coDIU.gene[[.]] %in% gene_group$gene))
