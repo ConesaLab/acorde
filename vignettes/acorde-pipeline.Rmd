@@ -977,16 +977,134 @@ clusters_coDIU.gene <- map(clusters_coDIU,
 
 # Using acorde results for functional analysis
 
-
+Providing a full description of functional analysis in the acorde manuscript is 
+beyond the scope of this vignette. However, we will provide users with some
+tips, should they want to do a similar analysis of their single-cell expression
+clusters using tappAS.
 
 ## Obtaining a functionally-annotated transcriptome with IsoAnnotLite
 
+Prior to functional analysis, we transferred functional annotations to our 
+long read-defined isoforms using [IsoAnnotLite](https://isoannot.tappas.org/isoannot-lite/).
+Briefly, IsoAnnotLite takes SQANTI3 output files and a previously-annotated
+tappAS GFF3 file [[4]](#4) 
+(which can be found [here](http://app.tappas.org/resources/downloads/gffs/)) 
+as inputs to generate a new, tappAS-compatible GFF3 file. To achieve this, 
+transcripts are positionally matched to those in the pre-existing annotation 
+and functional features transferred if they are situated in overlapping genomic 
+positions.
+
+For this study, given that we used a RefSeq transcriptome for long-read isoform 
+definition, we used tappAS' *Mus musculus* RefSeq functional annotation 
+(GRCm38, RefSeq release 78). Details for this process are available in 
+Supplementary Note 1 in our manuscript ([Arzalluz-Luque et al.](https://www.biorxiv.org/content/10.1101/2021.05.07.441841v1)).
+
+## Generating tappAS project inputs from single-cell data
+
+Even though tappAS does not currently support single-cell data, our study took
+advantage of the qualitative analysis modules in the application, i.e. 
+**Functional Diversity Analysis** and **Functional Enrichment Analysis** [[4]](#4), 
+to obtain insights on the functional features and functionalities that changed 
+as a result of isoform co-expression and coDIU mechanisms.
+
+To load single-cell RNA-Seq data into tappAS, we pretended to have a Time-Course 
+Single Series design using cell IDs as sample IDs and cell types as time points.
+Please note that this strategy **is not valid for quantitative analyses**, since
+tappAS does not implement single-cell dedicated analysis methods.
+
+Using the `metadata` table, a **tappAS design file** can be generated as follows:
+
+```{r, eval=FALSE}
+# create design table from metadata
+design <- metadata %>% 
+  select(run, cell_type) %>%
+  dplyr::rename(sample = "run", time = "cell_type") %>%
+  mutate(time = factor(time) %>% as.numeric(), group = rep("case", nrow(metadata))) %>%
+  arrange(time)
+
+# subset design to alleviate computational burden
+design_sub <- design %>%
+  group_by(time) %>%
+  slice_sample(n = 10)
+
+# export
+write_tsv(design_sub, "tappas_design.tsv")
+```
+
+To generate an **expression matrix** for tappAS, run:
+
+```{r, eval=FALSE}
+# create matrix with samples in design file
+matrix_sp <- tasic_sp %>%
+  select(transcript, all_of(design_sub$sample)) %>% 
+  column_to_rownames("transcript")
+
+write.table(matrix_sp, sep = "\t", "tappas_matrix_sp.tsv")
+```
+
+Depending on the target isoform set, users may want to export the DE expression 
+(to use the full dataset) or the muli-isoform count matrices (to only include 
+isoforms input for clustering). This will mostly affect Functional Enrichment 
+Analyses and the definition of background gene lists. For instance, to run a
+functional enrichment of DIU genes vs genes with at least one DE isoform, users
+must create a project including transcripts from all genes in that background 
+list, i.e. using the `tasic_de` expression matrix.
+
+Creating specific test and background **gene lists** is particularly useful for
+Functional Enrichment Analysis. Following the example in our study, we generated 
+a specific list with all coDIU genes that included isoforms in oligodendrocyte, 
+neuron and neuron-oligo clusters(i.e. clusters 1, 4 and 14). This list was used 
+as test list for Functional Enrichment of GO terms, and can be generated using the `fromList()`function (modified from the UpSetR package), which generates a binary 
+occurrence table indicating the clusters in which each coDIU gene has isoforms:
+
+```{r, eval=FALSE}
+# create occurrence table
+gene_occurrence <- acorde::fromList(clusters_coDIU.gene) %>%
+  rownames_to_column("gene")
+
+# select clusters
+clust_select <- c(1, 4, 14)
+
+# select shared gene group
+clust_pair1 <- dplyr::select(gene_occurrence, "1", "4")
+gene_group1 <- gene_occurrence$gene[rowSums(clust_pair1) == 2] %>% tibble(gene = .)
+
+clust_pair2 <- dplyr::select(gene_occurrence, "4", "14")
+gene_group2 <- gene_occurrence$gene[rowSums(clust_pair2) == 2] %>% tibble(gene = .)
+
+gene_group <- bind_rows(gene_group1, gene_group2) %>% unique
+
+# write file
+write_tsv(gene_group,
+          "clust_1_4_14_genes.tsv",
+          col_names = FALSE)
+```
+
+In addition, a **transcript inclusion list** can be provided upon tappAS project 
+creation to filter both the expression matrix and annotation files and create a
+project including only a transcript set of interest. This may be interesting 
+if a particular group of genes is to be analyzed further. Following the same example, 
+this would be the list used to create a project including only isoforms from 
+clusters 1, 4 and 14; in order to perform the Functional Diversity Analysis 
+in our neuron-oligo cluster results section:
+
+```{r}
+# select transcripts from shared genes in clusters
+tr_clust.idx <- map(clust_select,
+                    ~which(clusters_coDIU.gene[[.]] %in% gene_group$gene))
+tr_clust <- map2(clust_select, tr_clust.idx,
+                 ~clusters_coDIU[[.x]][.y])
+
+tr_clust_shared <- tibble(transcript = unlist(tr_clust))
+
+# write file
+write_tsv(tr_clust_shared,
+          "clust_1_4_14_transcripts.tsv",
+          col_names = FALSE)
+```
 
 
-
-# Conclusion
-
-The final output of the acorde pipeline consists in:
+In conclusion, the final output of the acorde pipeline consists in:
 
 - **Isoform clusters** representing unique expression patterns across cell types.
 - A list of identifiers of both **DIU** and **coDIU genes**, which can then be
@@ -1023,3 +1141,8 @@ Short-read scRNA-seq data was obtained from Tasic et al. (2016):
 - <a id="3">[3]</a>
 Tasic, B. et al. Adult mouse cortical cell taxonomy revealed by single cell 
 transcriptomics. *Nature Neuroscience*. 19, 335–346 (2016).
+
+- <a id="4">[4]</a>
+de la Fuente, L., Arzalluz-Luque, Á., Tardáguila, M. et al. tappAS: a 
+comprehensive computational framework for the analysis of the functional 
+impact of differential splicing. *Genome Biology* 21, 119 (2020). https://doi.org/10.1186/s13059-020-02028-w.
