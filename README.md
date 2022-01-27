@@ -50,7 +50,7 @@ increase install time.
 ### Contact
 Note that *acorde* is currently under development. If you encounter a 
 problem, please [open an issue](https://github.com/ConesaLab/acorde/issues) 
-via GitHub or send an email to angeles.arzalluz@gmail.com.
+via GitHub or send an email to angeles.arzalluz [at] gmail.com.
   
   
 ### References
