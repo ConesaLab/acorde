@@ -57,9 +57,37 @@ available under the [vignettes](https://github.com/ConesaLab/acorde/tree/master/
 folder.
 
 
+### Getting started
+
+In order to use acorde, you will need the following items:
+
+- An isoform-level quantification matrix.
+- Isoform-to-gene relationships and cell-level identity labels (i.e. cell type
+or state).
+- A functionally-annotated transcriptome (provided that you wish to perform
+downstream functional analyses).
+
+Importantly, acorde can be applied on both standard reference and long 
+read-defined transcriptomes -the only limitation concerns the annotation of 
+functional features for those isoforms.
+
+For our study, we used IsoAnnotLite (v2.6) to transfer functional labels 
+from tappAS’ pre-annotated mouse RefSeq 78 reference as well as from the mouse
+neural transcriptome used in the tappAS publication, which was possible thanks 
+to the fact that we used a compatible reference for long-read processing (i.e. 
+an updated version of the mouse RefSeq transcriptome). Therefore, users will
+need to take this into consideration and rely on pre-annotated references and 
+isoAnnotLite until a *de novo* annotation tool is available (currently 
+a [work in progress](https://github.com/ConesaLab/tappAS/issues/12)).
+
+In the meantime, all available references can be viewed and downloaded [here](https://app.tappas.org/resources/downloads/gffs/). To use the mouse brain
+transcriptome in our manuscript, download the 
+`Mus_musculus_GRCm38_acorde.gff3` file.
+
+
 ### Contact
-Note that *acorde* is currently under development. If you encounter a 
-problem, please [open an issue](https://github.com/ConesaLab/acorde/issues) 
+If you encounter a problem, please 
+[open an issue](https://github.com/ConesaLab/acorde/issues) 
 via GitHub or send an email to angeles.arzalluz [at] gmail.com.
 
   
