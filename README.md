@@ -2,9 +2,8 @@
 
 ### Introduction
 The **acorde** R package contains an implementation of the pipeline showcased in
-Arzalluz-Luque et al. 2021 [[1]](#1). *acorde* is an end-to-end, data intensive 
-pipeline designed for the study of isoform co-usage networks using single-cell 
-RNA-seq data (scRNA-seq). 
+Arzalluz-Luque et al. 2021 [[1]](#1). *acorde* is an end-to-end pipeline designed 
+for the study of isoform co-usage networks using single-cell RNA-seq data (scRNA-seq). 
 
 The pipeline includes three basic analysis blocks:
 
@@ -18,15 +17,24 @@ analysis with a biologically interpretable readout, we incorporate functional
 annotations onto isoform models, and use 
 [tappAS](https://github.com/ConesaLab/tappAS) for functional analysis.
 
-Since both the long read-transcriptome definition procedure and the 
+Since both the long read-transcriptome definition/quantification procedure and the 
 functional analyses in [[1]](#1) are based on external tools, the present R 
 package does **not** include them. 
+
+To reproduce our pipeline's **long read transcriptome building** strategy, 
+please refer to our manuscript's dedicated Supplementary Note [[1]](#1).
+
+Regarding **functional analyses**, we have included a section in the vignette 
+providing instructions to perform them, including:
+
+- How to obtain a functionally-annotated transcriptome using [isoAnnotLite](https://isoannot.tappas.org/isoannot-lite/).
+- How to generate input files that are compatible with the [tappAS](https://github.com/ConesaLab/tappAS) application.
 
 *acorde* contains the necessary functions and documentation to obtain 
 a set of DIU and co-DIU genes using an single-cell, isoform-level expression 
 matrix as input. In addition, we provide instructions to reproduce the figures 
 and additional analyses included in Arzalluz-Luque et al. [[1]](#1).
-The isoform expression matrix employed during the study as internal 
+The isoform expression matrix employed during the study is provided as internal 
 data in the package.
 
 ![](images/acorde_pipeline-small.png)
@@ -53,7 +61,7 @@ folder.
 Note that *acorde* is currently under development. If you encounter a 
 problem, please [open an issue](https://github.com/ConesaLab/acorde/issues) 
 via GitHub or send an email to angeles.arzalluz [at] gmail.com.
-  
+
   
 ### References
 If you use *acorde* in your research, please cite:
