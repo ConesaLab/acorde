@@ -5,6 +5,8 @@ The **acorde** R package contains an implementation of the pipeline showcased in
 Arzalluz-Luque et al. 2021 [[1]](#1). *acorde* is an end-to-end pipeline designed 
 for the study of isoform co-usage networks using single-cell RNA-seq data (scRNA-seq). 
 
+[![DOI](https://zenodo.org/badge/365198830.svg)](https://zenodo.org/badge/latestdoi/365198830)
+
 The pipeline includes three basic analysis blocks:
 
 1. Single-cell isoform quantification and Differential Expression (DE) filtering. 
