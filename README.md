@@ -82,7 +82,7 @@ a [work in progress](https://github.com/ConesaLab/tappAS/issues/12)).
 
 In the meantime, all available references can be viewed and downloaded [here](https://app.tappas.org/resources/downloads/gffs/). To use the mouse brain
 transcriptome in our manuscript, download the 
-`Mus_musculus_GRCm38_acorde.gff3` file.
+`Mus_Musculus_GRCm38.p6_PacBioENCODE_RefSeq108.gff3` file.
 
 
 ### Contact
