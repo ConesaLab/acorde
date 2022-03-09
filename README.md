@@ -67,6 +67,10 @@ or state).
 - A functionally-annotated transcriptome (provided that you wish to perform
 downstream functional analyses).
 
+Please note that an example dataset (the one used in the acorde manuscript [[1]](#1))
+including all required objects is provided along with the package. Details to
+load and use them can be found in the package's vignette.
+
 Importantly, acorde can be applied on both standard reference and long 
 read-defined transcriptomes -the only limitation concerns the annotation of 
 functional features for those isoforms.
