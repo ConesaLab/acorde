@@ -98,10 +98,9 @@ via GitHub or send an email to angeles.arzalluz [at] gmail.com.
 
   
 ### References
-If you use *acorde* in your research, please cite:
+If you use *acorde* in your research, please cite the original publication:
 
 <a id="1">[1]</a>
-Angeles Arzalluz-Luque, Pedro Salguero, Sonia Tarazona, Ana Conesa:
-*Acorde*: unraveling functionally-interpretable networks of isoform co-usage 
-from single cell data. *bioRxiv* 2021.05.07.441841; 
-doi: https://doi.org/10.1101/2021.05.07.441841
+Arzalluz-Luque, A., Salguero, P., Tarazona, S. et al. acorde unravels functionally 
+interpretable networks of isoform co-usage from single cell data. 
+*Nat Commun* 13, 1828 (2022). [https://doi.org/10.1038/s41467-022-29497-w](https://doi.org/10.1038/s41467-022-29497-w)
