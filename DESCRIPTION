@@ -40,6 +40,8 @@ Suggests:
     SummarizedExperiment,
     zinbwave,
     rmarkdown
+Remotes:
+    github::skinnider/dismay
 RdMacros:
     Rdpack
 VignetteBuilder: knitr
