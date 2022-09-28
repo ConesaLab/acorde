@@ -46,12 +46,15 @@ devtools::install_github("YosefLab/SymSim", build_vignettes = TRUE)
 
 ```
 
-Load the SymSim package:
+Load the SymSim package, acorde and other required dependencies:
 
 ```{r, results = "hide"}
-suppressPackageStartupMessages(
+suppressPackageStartupMessages({
   library(SymSim)
-)
+  library(tidyverse)
+  library(acorde)
+  library(scater)
+})
 ```
 
 First, we simulated true counts for 8 cell types, which requires the generation 
@@ -99,11 +102,6 @@ a Principal Component Analysis (PCA) to better characterize the data structure a
 variability between cells and cell types:
 
 ```{r, eval = FALSE}
-# load SCE library
-suppressPackageStartupMessages(
-  library(SingleCellExperiment)
-)
-
 # feature and cell IDs as metadata
 rownames(observed_counts$counts) <- paste0("Feature", seq(1, 8000))
 colnames(observed_counts$counts) <- paste0("Cell", seq(1, 1000))
@@ -131,8 +129,6 @@ If you started at this point, or you want to reproduce the results in our manusc
 load the already-simulated SymSim data object stored within this package:
 
 ```{r}
-library(tidyverse)
-
 # load data
 data("symsim_sce")
 
@@ -142,9 +138,7 @@ symsim_sce
 # cell type IDs and composition
 symsim_sce$Group %>% table()
 
-# plot PCA
-library(scater)
-
+# plot PCA using scater function
 plotPCA(symsim_sce, colour_by = "Group")
 ```
 
@@ -172,7 +166,7 @@ patterns <- tibble(one.a = c(TRUE, rep(FALSE, 7)),
                      three.b = three.a[sample(seq_along(three.a))],
                      three.c = three.b[sample(seq_along(three.b))],
                      three.d = three.c[sample(seq_along(three.c))],
-                     three.e = three.d[sample(seq_along(three.d))]) %>% t %>% as_tibble
+                     three.e = three.d[sample(seq_along(three.d))]) %>% t %>% as_tibble()
 
 # show the results
 patterns
@@ -187,13 +181,11 @@ in cell types \code{Group3}, \code{Group6} and \code{Group8}.
 Now, we are ready to run the \code{simulate_coexpression} function in acorde
 to generate the selected co-expression patterns in the already-simulated dataset:
 
-```{r}
-suppressWarnings(
+```{r, warning = FALSE}
 coexpr_results <- simulate_coexpression(symsim_sce,
                                         feature_no = 1400, 
                                         patterns, 
                                         cluster_size = 200)
-)
 
 names(coexpr_results)
 ```
@@ -246,7 +238,9 @@ pattern_plots <- map(cluster_patterns,
                      plot_cluster_profile,
                      ct_labels = seq(1, 8))
 
-plot_grid(plotlist = pattern_plots, labels = seq(1, 15))
+plot_grid(plotlist = pattern_plots, 
+          labels = seq(1, 15), 
+          ncol = 3)
 
 
 ```
