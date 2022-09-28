@@ -30,7 +30,7 @@ knitr::opts_chunk$set(
 # Introduction
 
 The **acorde** R package contains the necessary functions to reproduce the
-pipeline in [this paper](https://www.biorxiv.org/content/10.1101/2021.05.07.441841v1),
+pipeline in [this paper](https://www.nature.com/articles/s41467-022-29497-w),
 a study by *Arzalluz-Luque et al.* in which we analyze networks of isoform co-usage
 using single-cell RNA-seq data (scRNA-seq).
 
@@ -1120,10 +1120,10 @@ in [Arzalluz-Luque et al.](https://www.biorxiv.org/content/10.1101/2021.05.07.44
 If you use **acorde** in your research, please cite:
 
 - <a id="1">[1]</a>
-Angeles Arzalluz-Luque, Pedro Salguero, Sonia Tarazona, Ana Conesa:
-*Acorde*: unraveling functionally-interpretable networks of isoform co-usage 
-from single cell data. *bioRxiv* 2021.05.07.441841 (2021); 
-doi: https://doi.org/10.1101/2021.05.07.441841
+Arzalluz-Luque, A., Salguero, P., Tarazona, S. and Conesa, A.
+*acorde* unravels functionally interpretable networks of isoform co-usage 
+from single cell data. *Nature Communications* 13, 1828 (2022). 
+https://doi.org/10.1038/s41467-022-29497-w
 
 
 Long-read data was obtained from the [ENCODE consortium](http://encodeproject.org/),
