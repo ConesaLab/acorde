@@ -1,0 +1,253 @@
+---
+title: "\"Simulating co-expression in pre-simulated scRNA-seq data with acorde\""
+author: 
+  - name: "Ángeles Arzalluz-Luque"
+    affiliation: "Institute for Integrative Systems Biology (I2SysBio), Valencia, Spain"
+    email: angeles.arzalluz@gmail.com
+package: acorde
+date: "Last updated: `r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Step-by-step guide to the acorde pipeline}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  dpi = 150, 
+  out.width="100%",
+  crop = NULL
+)
+```
+
+# Introduction
+
+In this vignette, we will demonstrate how to introduce co-expression between
+features in an already-simulated scRNA-seq dataset. For this, we will first
+explain how we originally simulated single-cell data in the [acorde manuscript](https://www.nature.com/articles/s41467-022-29497-w) using the 
+[SymSim R package](https://github.com/YosefLab/SymSim), and then describe how 
+to introduce and visualize co-expression patterns in the previously simulated
+scRNA-seq expression matrix.
+
+# Simulating scRNA-seq data with SymSim
+
+If required, the SymSim R package can be installed
+from GitHub as follows (note usage of `build_vignettes = TRUE` to be able to 
+access package documentation):
+
+```{r, eval = FALSE}
+devtools::install_github("YosefLab/SymSim", build_vignettes = TRUE)
+
+```
+
+Load the SymSim package:
+
+```{r, results = "hide"}
+suppressPackageStartupMessages(
+  library(SymSim)
+)
+```
+
+First, we simulated true counts for 8 cell types, which requires the generation 
+of a tree object detailing the relationships between the cell types (in this case, 
+discrete cell types):
+
+```{r}
+tree <- pbtree(n = 7, type = "discrete")
+plotTree(tree)
+```
+SymSim implements a two-step simulation, in which true counts are first simulated
+to then add technology-specific noise and user-defined biasess that are normally
+found on scRNA-seq data. For the first step, we run SymSim with the following 
+parameters to generate a dataset containing 1000 total cells and 8000 genes:
+
+```{r, eval = FALSE}
+# true counts
+true_counts <- SimulateTrueCounts(ncells_total = 1000, ngenes = 8000, 
+                                  min_popsize = 100, i_minpop = 1, 
+                                  nevf = 10, n_de_evf = 9, evf_type = "discrete", phyla = tree,
+                                  vary = "s", Sigma = 0.25,
+                                  gene_effect_prob = 0.5, bimod = 0.4, 
+                                  prop_hge = 0.03, mean_hge = 5,
+                                  randseed = 123)
+```
+
+Next, we run the simulation of observed counts as follows:
+
+```{r, eval = FALSE}
+observed_counts <- True2ObservedCounts(true_counts = true_counts$counts, 
+                                       meta_cell = true_counts$cell_meta,
+                                       protocol = "nonUMI", 
+                                       alpha_mean = 0.1, alpha_sd = 0.005, 
+                                       lenslope = 0, 
+                                       gene_len = rep(1000, nrow(true_counts$counts)), 
+                                       depth_mean = 4e6, depth_sd = 1e4)
+```
+
+Here, we selected `"nonUMI"` as the simulated protocol to mimic the properties
+of the Smart-seq2 dataset used in our study. For a detailed description of the 
+rest of the parameters, please see the [SymSim documentation](https://github.com/YosefLab/SymSim).
+
+Finally, we created a `SingleCellExperiment` object for further processing, including
+a Principal Component Analysis (PCA) to better characterize the data structure and the
+variability between cells and cell types:
+
+```{r, eval = FALSE}
+# load SCE library
+suppressPackageStartupMessages(
+  library(SingleCellExperiment)
+)
+
+# feature and cell IDs as metadata
+rownames(observed_counts$counts) <- paste0("Feature", seq(1, 8000))
+colnames(observed_counts$counts) <- paste0("Cell", seq(1, 1000))
+colData <- tibble(Cell = colnames(observed_counts$counts), 
+                  Group = paste0("Group", observed_counts$cell_meta$pop))
+
+# create SCE
+symsim_sce <- SingleCellExperiment(
+  assays = list(counts = observed_counts$counts, 
+                logcounts = log2(observed_counts$counts+1)),
+  colData = colData)
+```
+
+
+# Introducing co-expression relationships in the simulated dataset
+
+Our co-expression simulation method relies on 
+**breaking the cell-type connectivity between features to rearrange them**. 
+To perform this rearrangement and build new, synthetic features, we require 
+the user to provide **cross-cell type expression patterns**. 
+These patterns are qualitative, i.e. just indicate low or 
+high expression in a given cell type.
+
+If you started at this point, or you want to reproduce the results in our manuscript, 
+load the already-simulated SymSim data object stored within this package:
+
+```{r}
+library(tidyverse)
+
+# load data
+data("symsim_sce")
+
+# view object
+symsim_sce
+
+# cell type IDs and composition
+symsim_sce$Group %>% table()
+
+# plot PCA
+library(scater)
+
+plotPCA(symsim_sce, colour_by = "Group")
+```
+
+Next, it is required that users build an **expression pattern table**. This
+must have a structure where feature-level expression patterns are defined row-wise,
+meaning that cell-types are situated in the columns. Note that the number and order
+of cell types must be the same as in the simulated dataset. Each row in the 
+\code{dataframe} should then include a \code{TRUE} value whenever high expression 
+in a given cell type is desired, and \code{FALSE} to select low or no expression 
+in that cell type. Here is an example of how to generate this structure:
+
+```{r}
+# create cluster patterns
+patterns <- tibble(one.a = c(TRUE, rep(FALSE, 7)),
+                     one.b = one.a[sample(seq_along(one.a))],
+                     one.c = one.b[sample(seq_along(one.b))],
+                     one.d = one.c[sample(seq_along(one.c))],
+                     one.e = one.d[sample(seq_along(one.d))],
+                     two.a = c(rep(TRUE, 2), rep(FALSE, 6)),
+                     two.b = two.a[sample(seq_along(two.a))],
+                     two.c = two.b[sample(seq_along(two.b))],
+                     two.d = two.c[sample(seq_along(two.c))],
+                     two.e = two.d[sample(seq_along(two.d))],
+                     three.a =  c(rep(TRUE, 3), rep(FALSE, 5)),
+                     three.b = three.a[sample(seq_along(three.a))],
+                     three.c = three.b[sample(seq_along(three.b))],
+                     three.d = three.c[sample(seq_along(three.c))],
+                     three.e = three.d[sample(seq_along(three.d))]) %>% t %>% as_tibble
+
+# show the results
+patterns
+```
+
+In this example, we have 15 expression patterns, each corresponding to one 
+gene cluster. The first pattern, for instance, where only the \code{Group1}
+cell type has a \code{TRUE} value, corresponds to genes where there is Group1-specific
+expression. Conversely, the last pattern will contain genes that are highly expressed
+in cell types \code{Group3}, \code{Group6} and \code{Group8}.
+
+Now, we are ready to run the \code{simulate_coexpression} function in acorde
+to generate the selected co-expression patterns in the already-simulated dataset:
+
+```{r}
+suppressWarnings(
+coexpr_results <- simulate_coexpression(symsim_sce,
+                                        feature_no = 1400, 
+                                        patterns, 
+                                        cluster_size = 200)
+)
+
+names(coexpr_results)
+```
+
+As a result, we obtain a named list including the expression matrix and the 
+feature IDs that go into each of the 15 clusters.
+
+In this function, \code{feature_no} corresponds to the number of highly and lowly 
+expressed features that are to be selected to produce clusters, i.e. a total of 
+\code{feature_no * 2} features. In this example, we selected to generate 200-feature
+clusters. Given that our pattern matrix has 15 patterns, we expect to generate a
+new expression matrix with 3000 synthetically co-expressed features:
+
+```{r}
+# show expression matrix
+coexpr_results$sim_matrix
+
+# show summary of clusters
+map_int(coexpr_results$sim_clusters, length)
+```
+
+
+# Visualizing the simulated co-expression patterns
+
+Now, we can use some of the \code{acorde} visualization functions to make sure
+that our data contains the specified patterns:
+
+```{r}
+# scale the matrix to enhance visualization
+coexpr.scaled <- scale_isoforms(coexpr_results$sim_matrix, 
+                                isoform_col = "feature")
+
+# create cell-to-cell-type ID table
+ct <- colData(symsim_sce) %>% 
+  as_tibble %>%
+  rename(cell = "Cell", cell_type = "Group")
+
+# compute average-by-cell type cluster patterns
+cluster_patterns <- map(coexpr_results$sim_clusters,
+                    ~calculate_cluster_profile(coexpr.scaled,
+                                               isoform_ids = .,
+                                               id_table = ct,
+                                               isoform_col = "feature"))
+
+# plot patterns
+library(cowplot)
+theme_set(theme_cowplot())
+
+pattern_plots <- map(cluster_patterns,
+                     plot_cluster_profile,
+                     ct_labels = seq(1, 8))
+
+plot_grid(plotlist = pattern_plots, labels = seq(1, 15))
+
+
+```
+
