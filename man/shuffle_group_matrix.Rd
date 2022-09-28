@@ -4,7 +4,7 @@
 \alias{shuffle_group_matrix}
 \title{Reorder cell type-specific expression matrix during co-expression simulation}
 \usage{
-shuffle_group_matrix(sim_data, feature_ids, group_pattern, cluster_no)
+shuffle_group_matrix(sim_data, feature_ids, group_pattern, ngroups)
 }
 \arguments{
 \item{sim_data}{A count matrix with features as rows and cells as columns.
@@ -18,8 +18,10 @@ lowly expressed when shuffling by the indicated expression pattern.}
 high expression in that cell type is desired and \code{FALSE} if the opposite.
 The vector must be ordered as the cell types in \code{sim_data}.}
 
-\item{cluster_no}{An integer indicating the total number of co-expression
-clusters that are being generated in the simulation}
+\item{ngroups}{An integer indicating the number of groups that top and bottom
+features should be divided into. It is computed by dividing the number
+of features selected as highly/lowly expressed by the size of the clusters
+that are to be generated.}
 }
 \value{
 An expression matrix, with the same characteristics as \code{sim_data},

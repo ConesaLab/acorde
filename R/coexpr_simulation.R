@@ -25,15 +25,17 @@
 #' high expression in that cell type is desired and \code{FALSE} if the opposite.
 #' The vector must be ordered as the cell types in \code{sim_data}.
 #'
-#' @param cluster_no An integer indicating the total number of co-expression
-#' clusters that are being generated in the simulation
+#' @param ngroups An integer indicating the number of groups that top and bottom
+#' features should be divided into. It is computed by dividing the number
+#' of features selected as highly/lowly expressed by the size of the clusters
+#' that are to be generated.
 #'
 #' @return An expression matrix, with the same characteristics as \code{sim_data},
 #' and a number of features defined as the total amount of top/bottom features
 #' selected divided by the number of clusters for which co-expression patterns
 #' where supplied.
 #'
-shuffle_group_matrix <- function(sim_data, feature_ids, group_pattern, cluster_no){
+shuffle_group_matrix <- function(sim_data, feature_ids, group_pattern, ngroups){
 
   # select top and bottom features in group
   top <- dplyr::select(feature_ids, top) %>% unlist
@@ -43,11 +45,11 @@ shuffle_group_matrix <- function(sim_data, feature_ids, group_pattern, cluster_n
   # top
   top.shuffle <- sample(length(top))
   top <- top[top.shuffle]
-  top.list <- split(top, cut(seq(1, length(top)), breaks = cluster_no, labels = FALSE))
+  top.list <- split(top, cut(seq(1, length(top)), breaks = ngroups, labels = FALSE))
   # bottom
   bottom.shuffle <- sample(length(bottom))
   bottom <- bottom[bottom.shuffle]
-  bottom.list <- split(bottom, cut(seq(1, length(bottom)), breaks = cluster_no, labels = FALSE))
+  bottom.list <- split(bottom, cut(seq(1, length(bottom)), breaks = ngroups, labels = FALSE))
 
   # bind features following pattern
   features_bound <- vector(mode = "list", length = length(group_pattern))
@@ -78,8 +80,7 @@ shuffle_group_matrix <- function(sim_data, feature_ids, group_pattern, cluster_n
 #'
 #' @param feature_no An integer indicating the number of high expression ("top")
 #' and low expression ("bottom") features to be selected for co-expression
-#' simulation. Note that the output matrix will contain \code{feature_no*2}
-#' features in total.
+#' simulation. Note that \code{feature_no*2} features will be used in total.
 #'
 #' @param patterns A \code{data.frame} or \code{tibble} containing cell types as
 #' columns (ordered as in the \code{colData} slot in \code{sim_data}) and
@@ -87,6 +88,9 @@ shuffle_group_matrix <- function(sim_data, feature_ids, group_pattern, cluster_n
 #' a logical vector indicating the desired expression pattern must be
 #' provided, in a row-wise manner. Insert \code{TRUE} if
 #' high expression in that cell type is desired, \code{FALSE} if the opposite.
+#'
+#' @param cluster_size An integer indicating the number of features to include
+#' per cluster.
 #'
 #' @return A \code{list}, containing two objects:
 #'
@@ -105,7 +109,8 @@ shuffle_group_matrix <- function(sim_data, feature_ids, group_pattern, cluster_n
 #' @export
 simulate_coexpression <- function(sim_data,
                                   feature_no,
-                                  patterns){
+                                  patterns,
+                                  cluster_size){
 
   ## DATA PREPARATION: CELL TYPE SPECIFIC MATRICES AND FEATURES ##
 
@@ -155,11 +160,16 @@ simulate_coexpression <- function(sim_data,
   # shuffle matrix for each cell type following cluster patterns
   # note that internal function shuffle_group_matrix() is used to perform
   # each individual shuffling operation
+
+      # calculate no. of clusters based on size and number of features
+      partitions <- feature_no / cluster_size
+      partitions <- trunc(partitions)
+
   expr.list <- purrr::pmap(list(normcounts.list, features.list, patterns),
                     ~shuffle_group_matrix(sim_data = ..1,
                                           feature_ids = ..2,
                                           group_pattern = ..3,
-                                          cluster_no = nrow(patterns)))
+                                          ngroups = partitions))
 
   # join cell type matrices into a single expression matrix
   expr.list <- purrr::map(expr.list, select, -feature)
