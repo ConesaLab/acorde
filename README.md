@@ -1,5 +1,16 @@
 # acorde: isoform co-usage networks from single-cell RNA-seq data
 
+* [Introduction](https://github.com/ConesaLab/acorde/edit/master/README.md#introduction)
+
+* [Installation](https://github.com/ConesaLab/acorde/edit/master/README.md#installation)
+
+* [Getting started](https://github.com/ConesaLab/acorde/edit/master/README.md#getting-started)
+
+* [Contact](https://github.com/ConesaLab/acorde/edit/master/README.md#contact)
+
+* [References](https://github.com/ConesaLab/acorde/edit/master/README.md#references)
+
+
 ### Introduction
 The **acorde** R package contains an implementation of the pipeline showcased in
 Arzalluz-Luque et al. 2021 [[1]](#1). *acorde* is an end-to-end pipeline designed 
@@ -43,11 +54,25 @@ data in the package.
 
 
 ### Installation
-The *acorde* R package and all the necessary dependencies  can be installed 
-from GitHub using `devtools`:
+
+#### Dependencies requiring manual installation
+
+Some of the co-expression metrics available in *acorde* are based on 
+functions from the [dismay](https://github.com/skinnider/dismay) R package. 
+Since dismay is not available on CRAN, we suggest to install it from GitHub before
+starting the acorde installation. This can be done as follows:
 
 ```
 install.packages("devtools")
+devtools::install_github("skinider/dismay")
+```
+
+#### Installing acorde
+
+The *acorde* R package and all the remaining dependencies can be installed 
+from GitHub using `devtools`:
+
+```
 devtools::install_github("ConesaLab/acorde")
 ```
 
