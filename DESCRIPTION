@@ -25,6 +25,7 @@ Imports:
     purrr,
     plotrix,
     Rdpack,
+    SingleCellExperiment,
     stats,
     stringr,
     tidyr,
@@ -36,7 +37,6 @@ Suggests:
     BiocStyle,
     DESeq2,
     edgeR,
-    SingleCellExperiment,
     SummarizedExperiment,
     zinbwave,
     rmarkdown
