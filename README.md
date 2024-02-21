@@ -64,7 +64,12 @@ starting the acorde installation. This can be done as follows:
 
 ```
 install.packages("devtools")
-devtools::install_github("skinider/dismay")
+devtools::install_github("skinnider/dismay")
+```
+
+If installing dismay requires propr, it should also be installed from GitHub.
+```
+devtools::install_github("tpq/propr")
 ```
 
 #### Installing acorde
